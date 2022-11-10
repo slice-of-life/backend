@@ -1,4 +1,4 @@
-# Makefile for monopoly-pygame
+# Makefile for slice of life backend 
 
 help:
 	@echo "help -- show this message and exit (default)"
@@ -16,23 +16,36 @@ venv:
 clean-venv:
 	[ ! -d .venv ] || rm -rf .venv
 
-clean:
-	rm -rf .pytest_cache
+clean-test:
+	[ ! -d .pytest_cache ] || rm -rf .pytest_cache
 
-activate: venv
+clean-pyc:
+	find . -name __pycache__ -exec rm -rf {} +
+	find . -name *.egg-info -exec rm -rf {} +
+
+clean: clean-venv clean-test clean-pyc
+
+activate:
+	@echo 
+	@echo
 	@echo "Virtual environment created!"
 	@echo "Activate it by running the following:"
+	@echo
 	@echo "    source .venv/bin/activate"
-
+	@echo 
 .PHONY: test
 test:
-	pytest --verbose --rootdir=test
+	pytest --verbose test/
 
 .PHONY: lint
 lint:
-	python3 -m pylint src
+	pylint src
 
-bootstrap: activate
-	[ ! .venv ] || pip3 install --require-virtualenv -r requirements.txt 
-	[ ! .venv ] || pip3 install --editable .
+bootstrap: venv
+	@( \
+		source .venv/bin/activate; \
+		pip3 install --require-virtualenv -r requirements.txt; \
+		pip3 install --editable . ; \
+	)
+	@$(MAKE) activate
 
