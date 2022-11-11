@@ -23,7 +23,10 @@ clean-pyc:
 	find . -name __pycache__ -exec rm -rf {} +
 	find . -name *.egg-info -exec rm -rf {} +
 
-clean: clean-venv clean-test clean-pyc
+clean-cov:
+	[ ! -e .coverage ] || rm -f .coverage
+
+clean: clean-venv clean-test clean-pyc clean-cov
 
 activate:
 	@echo 
@@ -35,7 +38,7 @@ activate:
 	@echo 
 .PHONY: test
 test:
-	pytest --verbose test/
+	pytest --cov=api --verbose test/
 
 .PHONY: lint
 lint:
