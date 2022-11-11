@@ -1,5 +1,6 @@
 # development tools
 pytest
 pylint
+pytest-cov
 
 # project dependencies
