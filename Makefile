@@ -52,3 +52,5 @@ bootstrap: venv
 	)
 	@$(MAKE) activate
 
+serve:
+	gunicorn sliceoflife_webservice:app

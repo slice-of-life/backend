@@ -5,4 +5,7 @@
 """
 
 def hello():
-    return "<p> Hello, World </p>"
+    return {
+        'msg': 'Welcome to the first endpoint of the slice of life api'
+    }
+
