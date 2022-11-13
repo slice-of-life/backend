@@ -9,5 +9,4 @@ from .api import hello
 
 app = Flask(__name__)
 
-app.add_url_rule('/', endpoint='index', view_func=hello)
-
+app.add_url_rule('/api/v1/greet', endpoint='index', view_func=hello)
