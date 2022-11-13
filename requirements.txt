@@ -5,3 +5,4 @@ pytest-cov
 
 # project dependencies
 Flask
+gunicorn
