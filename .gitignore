@@ -3,3 +3,6 @@
 
 # virtual environment files
 .venv
+
+# python package information
+src/sliceoflife_backend.egg-info
