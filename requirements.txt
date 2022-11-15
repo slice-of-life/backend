@@ -6,3 +6,7 @@ pytest-cov
 # project dependencies
 Flask
 gunicorn
+psycopg2
+SQLAlchemy
+requests
+boto3
