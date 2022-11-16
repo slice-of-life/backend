@@ -17,5 +17,5 @@ def hello() -> dict:
     response = {
         'msg': 'Welcome to the first endpoint of the slice of life api'
     }
-
+    LOGGER.debug("Generated response: %s", str(response))
     return response
