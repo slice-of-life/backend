@@ -1,6 +1,6 @@
 """
-    :module_name: routes
-    :module_summary: functions that defines the api routes for the slice of life api
+    :module_name: get
+    :module_summary: functions that defines the GET methods for the slice of life api
     :module_author: Nathan Mendoza (nathancm@uci.edu)
 """
 
