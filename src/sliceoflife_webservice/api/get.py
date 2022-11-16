@@ -18,7 +18,4 @@ def hello() -> dict:
         'msg': 'Welcome to the first endpoint of the slice of life api'
     }
 
-    LOGGER.info("Responding to GET /api/v1/greet")
-    LOGGER.info("sent: %s", str(response))
-
     return response
