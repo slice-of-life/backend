@@ -20,5 +20,13 @@ if __name__ != "__main__": #This is weird, but it is definitely suppose to be li
 
 app.logger.info("Created an API application instance")
 
-app.add_url_rule('/api/v1/greet', endpoint='greet', view_func=hello)
-app.logger.info("Added the route: GET /api/v1/greet")
+app.logger.info("Added the route: GET /api/v1/greeting")
+@app.route('/api/v1/greeting', methods=['GET'])
+def greeting():
+    """
+       The first API method of the Slice Of Life API
+    """
+    app.logger.info("Responding to GET /api/v1/greeting")
+    app.logger.info("Sent: %s", str(hello()))
+
+    return hello()
