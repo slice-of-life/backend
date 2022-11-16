@@ -7,6 +7,5 @@ pytest-cov
 Flask
 gunicorn
 psycopg2
-SQLAlchemy
 requests
 boto3
