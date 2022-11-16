@@ -7,6 +7,13 @@ from flask import Flask
 
 from .api import hello
 
-app = Flask(__name__)
+def app():
+    """
+        declares an instance of the sliceoflife api
+        :returns: API instance
+        :rtype: FlaskApp
+    """
+    api = Flask(__name__)
+    api.add_url_rule('/api/v1/greet', endpoint='index', view_func=hello)
 
-app.add_url_rule('/api/v1/greet', endpoint='index', view_func=hello)
+    return api
