@@ -1,10 +1,9 @@
-DROP TABLE IF EXISTS "users";
-DROP TABLE IF EXISTS "tasks";
-DROP TABLE IF EXISTS "posts";
-DROP TABLE IF EXISTS "activities";
+DROP TABLE IF EXISTS "completes";
 DROP TABLE IF EXISTS "reactions";
 DROP TABLE IF EXISTS "comments";
-DROP TABLE IF EXISTS "completes";
+DROP TABLE IF EXISTS "posts";
+DROP TABLE IF EXISTS "tasks";
+DROP TABLE IF EXISTS "users";
 
 CREATE TABLE "users"(
 handle TEXT PRIMARY KEY,
@@ -27,6 +26,7 @@ CREATE TABLE posts(
 post_id SERIAL PRIMARY KEY,
 free_text VARCHAR(255),
 image_url VARCHAR(255),
+created_at TIMESTAMP,
 posted_by VARCHAR(50),
     CONSTRAINT fk_user
         FOREIGN KEY(posted_by)
@@ -44,7 +44,7 @@ reacted_to INT, FOREIGN KEY(reacted_to) REFERENCES posts(post_id)
 
 CREATE TABLE comments(
 comment_id INT PRIMARY KEY,
-created_at DATE DEFAULT CURRENT_DATE,
+created_at TIMESTAMP,
 free_text VARCHAR(300),
 parent INT DEFAULT NULL,
 	CONSTRAINT Fk_user_2

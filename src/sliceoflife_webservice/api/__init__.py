@@ -4,4 +4,4 @@
     :module_author: Nathan Mendoza (nathancm@uci.edu)
 """
 
-from .routes import hello
+from .get import hello

@@ -1,6 +1,6 @@
 """
-    :module_name: routes
-    :module_summary: functions that defines the api routes for the slice of life api
+    :module_name: get
+    :module_summary: functions that defines the GET methods for the slice of life api
     :module_author: Nathan Mendoza (nathancm@uci.edu)
 """
 
@@ -17,8 +17,5 @@ def hello() -> dict:
     response = {
         'msg': 'Welcome to the first endpoint of the slice of life api'
     }
-
-    LOGGER.info("Responding to GET /api/v1/greet")
-    LOGGER.info("sent: %s", str(response))
-
+    LOGGER.debug("Generated response: %s", str(response))
     return response
