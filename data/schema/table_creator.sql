@@ -26,7 +26,7 @@ CREATE TABLE posts(
 post_id SERIAL PRIMARY KEY,
 free_text VARCHAR(255),
 image_url VARCHAR(255),
-created_at TIMESTAMP
+created_at TIMESTAMP,
 posted_by VARCHAR(50),
     CONSTRAINT fk_user
         FOREIGN KEY(posted_by)
