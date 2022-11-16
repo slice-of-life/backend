@@ -53,4 +53,4 @@ bootstrap: venv
 	@$(MAKE) activate
 
 serve:
-	gunicorn sliceoflife_webservice:app
+	flask --app src/sliceoflife_webservice:app run
