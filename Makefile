@@ -42,7 +42,7 @@ test:
 
 .PHONY: lint
 lint:
-	pylint src
+	pylint src/sliceoflife_webservice
 
 bootstrap: venv
 	@( \
