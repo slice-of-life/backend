@@ -4,8 +4,21 @@
     :module_author: Nathan Mendoza (nathancm@uci.edu)
 """
 
-def hello():
-    return {
+import logging
+
+LOGGER = logging.getLogger('gunicorn.error')
+
+def hello() -> dict:
+    """
+        A simple GET API route that introduces the Slice Of Life API
+        :returns: A static JSON response
+        :rtype: dict
+    """
+    response = {
         'msg': 'Welcome to the first endpoint of the slice of life api'
     }
 
+    LOGGER.info("Responding to GET /api/v1/greet")
+    LOGGER.info("sent: %s", str(response))
+
+    return response

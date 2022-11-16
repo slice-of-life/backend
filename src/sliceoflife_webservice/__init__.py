@@ -10,25 +10,15 @@ from flask import Flask
 
 from .api import hello
 
-LOGGER = logging.getLogger(__name__)
-LOGGER.setLevel(logging.DEBUG)
-HANDLER = logging.StreamHandler()
-HANDLER.setFormatter(
-    logging.Formatter("[%(asctime)s]:[%(levelname)s] -- %(message)s")
-)
-LOGGER.addHandler(
-    HANDLER
-)
+LOGGER = logging.getLogger('gunicorn.error')
 
-def app():
-    """
-        declares an instance of the sliceoflife api
-        :returns: API instance
-        :rtype: FlaskApp
-    """
-    api = Flask(__name__)
-    LOGGER.info("Creating an api instance")
-    api.add_url_rule('/api/v1/greet', endpoint='greet', view_func=hello)
-    LOGGER.info("Added endpoint: 'GET /api/v1/greet'")
+app = Flask(__name__)
 
-    return api
+if __name__ != "__main__": #This is weird, but it is definitely suppose to be like this
+    app.logger.handlers = LOGGER.handlers
+    app.logger.setLevel(LOGGER.level)
+
+app.logger.info("Created an API application instance")
+
+app.add_url_rule('/api/v1/greet', endpoint='greet', view_func=hello)
+app.logger.info("Added the route: GET /api/v1/greet")

@@ -42,7 +42,7 @@ test:
 
 .PHONY: lint
 lint:
-	pylint src
+	pylint src/sliceoflife_webservice
 
 bootstrap: venv
 	@( \
@@ -53,4 +53,4 @@ bootstrap: venv
 	@$(MAKE) activate
 
 serve:
-	flask --app src/sliceoflife_webservice:app run
+	gunicorn sliceoflife_webservice:app --log-level 'debug'
