@@ -13,3 +13,8 @@ class DatabaseNotConnectedError(SliceOfLifeBaseException):
     """
         Connection thrown if a sql query is attempted when the API has no active database connection
     """
+
+class SliceOfLifeAPIException(SliceOfLifeBaseException):
+    """
+        Exception thrown when an API request cannot be completed succesfully
+    """
