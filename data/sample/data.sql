@@ -22,3 +22,13 @@ INSERT INTO COMPLETES VALUES ('peter_the_anteater', 1);
 INSERT INTO COMPLETES VALUES ('peter_the_anteater', 3);
 INSERT INTO COMPLETES VALUES ('octocat', 2);
 INSERT INTO COMPLETES VALUES ('octocat', 5);
+
+--Sample comments
+INSERT INTO COMMENTS VALUES (DEFAULT, '2022-11-17 00:04:24.863881', 'Absolutely stunning!', NULL, 'octocat', 1);
+INSERT INTO COMMENTS VALUES (DEFAULT, '2022-11-17 01:44:24.863881', 'I quite agree.', 1, 'peter_the_anteater', 1);
+INSERT INTO COMMENTS VALUES (DEFAULT, '2022-11-17 23:55:24.863881', 'Sounds like a neat little place to eat', NULL, 'octocat', 2);
+INSERT INTO COMMENTS VALUES (DEFAULT, '2022-11-18 23:40:24.863881', 'Wow! That is super cool. I wish I could write code, but I heard that it is super hard', NULL, 'peter_the_anteater', 3);
+INSERT INTO COMMENTS VALUES (DEFAULT, '2022-11-19 00:09:24.863881', 'Anyone can learn to code. Even you!', 4, 'octocat', 3);
+INSERT INTO COMMENTS VALUES (DEFAULT, '2022-11-20 00:02:24.863881', 'That is a little too deep for me. I think I will stay close to the surface', NULL, 'peter_the_anteater', 4)
+
+
