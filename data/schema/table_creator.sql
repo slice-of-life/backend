@@ -36,7 +36,7 @@ activity INT,
 );
 
 CREATE TABLE reactions(
-react_id INT PRIMARY KEY,
+react_id SERIAL PRIMARY KEY,
 emoji TEXT,
 reacted_by VARCHAR(50), FOREIGN KEY(reacted_by) REFERENCES "users"(handle),
 reacted_to INT, FOREIGN KEY(reacted_to) REFERENCES posts(post_id)
