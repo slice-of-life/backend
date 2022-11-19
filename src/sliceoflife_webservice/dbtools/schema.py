@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Optional
 
 @dataclass
@@ -38,6 +39,7 @@ class Post:
     post_id: int
     free_text: Optional[str]
     image: str
+    created_at: datetime
     posted_by: User
     completes: Task
 
