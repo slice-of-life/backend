@@ -16,6 +16,7 @@ class User:
     """
     handle: str
     password_hash: str
+    email: str
     salt: str
     first_name: str
     last_name: str
@@ -70,3 +71,13 @@ class Comment:
     comment_on: Post
     comment_by: User
     parent: Optional[Comment]
+
+def interpret_as(datatype, data):
+    """
+        Convert the given data to an instance of datatype
+        :arg datatype: the type data will be converted to
+        :arg data: a collection of values that will be used to create a instance of datatype
+        :returns: a new instance of datatype
+        :rtype: datatype
+    """
+    return datatype(*data)

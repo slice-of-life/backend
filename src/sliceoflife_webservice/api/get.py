@@ -9,8 +9,8 @@ import logging
 from dotenv import dotenv_values
 
 from ..dbtools import Instance
-from ..dbtools.queries import paginated_posts
-from ..dbtools.schema import Post
+from ..dbtools.queries import paginated_posts, specific_user, specific_task
+from ..dbtools.schema import interpret_as, Post, User, Task
 
 LOGGER = logging.getLogger('gunicorn.error')
 
@@ -37,4 +37,28 @@ def get_latest_posts(limit: int, offset: int) -> dict:
     dbinstance.connect()
     query = paginated_posts(limit, offset)
     results = dbinstance.query(query)
-    return [Post(*r) for r in results]
+    results = [interpret_as(Post, r) for r in results]
+    for res in results:
+        if not isinstance(res.posted_by, User):
+            res.posted_by = _get_basic_post_author_info(res.posted_by)
+        if not isinstance(res.completes, Task):
+            res.completes = _get_task_info(res.completes)
+    return results
+
+def _get_basic_post_author_info(author_handle: str) -> User:
+    dbinstance = Instance(**dotenv_values())
+    dbinstance.connect()
+    query = specific_user(author_handle)
+    uinfo = interpret_as(User, dbinstance.query(query)[0]) #should only be one anyway
+    # hide sensitive information
+    uinfo.password_hash = "***"
+    uinfo.salt = "***"
+    uinfo.email = "***"
+    return uinfo
+
+def _get_task_info(task_id: int) -> Task:
+    dbinstance = Instance(**dotenv_values())
+    dbinstance.connect()
+    query = specific_task(task_id)
+    tinfo = interpret_as(Task, dbinstance.query(query)[0]) #should only be one anyway
+    return tinfo
