@@ -6,3 +6,6 @@
 
 # python package information
 src/sliceoflife_backend.egg-info
+
+# environment variables
+.env

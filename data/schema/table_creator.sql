@@ -36,14 +36,14 @@ activity INT,
 );
 
 CREATE TABLE reactions(
-react_id INT PRIMARY KEY,
+react_id SERIAL PRIMARY KEY,
 emoji TEXT,
 reacted_by VARCHAR(50), FOREIGN KEY(reacted_by) REFERENCES "users"(handle),
 reacted_to INT, FOREIGN KEY(reacted_to) REFERENCES posts(post_id)
 );
 
 CREATE TABLE comments(
-comment_id INT PRIMARY KEY,
+comment_id SERIAL PRIMARY KEY,
 created_at TIMESTAMP,
 free_text VARCHAR(300),
 parent INT DEFAULT NULL,

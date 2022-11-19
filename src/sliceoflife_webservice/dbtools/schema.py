@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Optional
 
 @dataclass
@@ -15,6 +16,7 @@ class User:
     """
     handle: str
     password_hash: str
+    email: str
     salt: str
     first_name: str
     last_name: str
@@ -38,6 +40,7 @@ class Post:
     post_id: int
     free_text: Optional[str]
     image: str
+    created_at: datetime
     posted_by: User
     completes: Task
 
@@ -68,3 +71,13 @@ class Comment:
     comment_on: Post
     comment_by: User
     parent: Optional[Comment]
+
+def interpret_as(datatype, data):
+    """
+        Convert the given data to an instance of datatype
+        :arg datatype: the type data will be converted to
+        :arg data: a collection of values that will be used to create a instance of datatype
+        :returns: a new instance of datatype
+        :rtype: datatype
+    """
+    return datatype(*data)
