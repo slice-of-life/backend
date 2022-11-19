@@ -5,6 +5,7 @@
 """
 
 import logging
+import os
 
 import psycopg2
 from psycopg2 import sql
@@ -19,11 +20,11 @@ class Instance:
     """
 
     def __init__(self, **config):
-        self._dbname = config.get("DBNAME")
-        self._dbuser = config.get("DBUSER")
-        self._dbpass = config.get("DBPASS")
-        self._dbhost = config.get("DBHOST")
-        self._dbport = config.get("DBPORT", 5432) # postgresql default port
+        self._dbname = config.get("DBNAME", os.getenv("DBNAME"))
+        self._dbuser = config.get("DBUSER", os.getenv("DBUSER"))
+        self._dbpass = config.get("DBPASS", os.getenv("DBPASS"))
+        self._dbhost = config.get("DBHOST", os.getenv("DBHOST"))
+        self._dbport = config.get("DBPORT", os.getenv("DBPORT", '5432')) # postgresql default port
         self._connection = None
 
     def connect(self) -> None:

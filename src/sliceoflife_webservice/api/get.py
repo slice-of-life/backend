@@ -5,6 +5,7 @@
 """
 
 import logging
+import os
 
 from dotenv import dotenv_values
 
@@ -49,7 +50,7 @@ def get_latest_posts(limit: int, offset: int) -> dict:
         res.image = spaceindex.get_share_link(res.image)
     return {
         "page": results,
-        "next": dotenv_values()["BASE_URL"] + f"/api/v1/slices/latest?limit={limit}&offset={offset + len(results)}"
+        "next": f"{os.getenv('BASE_URL')}/api/v1/slices/latest?limit={limit}&offset={offset + len(results)}"
     }
 
 def _get_basic_post_author_info(author_handle: str) -> User:

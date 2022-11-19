@@ -5,12 +5,16 @@
 """
 
 import logging
+import os
 
+from dotenv import load_dotenv
 from flask import Flask, request
 
 from .api import hello, get_latest_posts
 
 LOGGER = logging.getLogger('gunicorn.error')
+
+load_dotenv()
 
 app = Flask(__name__)
 

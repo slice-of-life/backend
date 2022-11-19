@@ -5,6 +5,7 @@
 """
 
 import logging
+import os
 
 import boto3
 
@@ -20,10 +21,10 @@ class SpaceIndex:
     SPACES_SHARE_TIME=300
 
     def __init__(self, **config):
-        self._region = config.get("SPACES_REGION")
-        self._endpoint = config.get("SPACES_ENDPOINT")
-        self._access_key = config.get("SPACES_KEY")
-        self._access_secret = config.get("SPACES_SECRET")
+        self._region = config.get("SPACES_REGION", os.getenv("SPACES_REGION"))
+        self._endpoint = config.get("SPACES_ENDPOINT", os.getenv("SPACES_ENDPOINT"))
+        self._access_key = config.get("SPACES_KEY", os.getenv("SPACES_KEY"))
+        self._access_secret = config.get("SPACES_SECRET", os.getenv("SPACES_SECRET"))
         self._session = None
 
     def create_session(self) -> None:
