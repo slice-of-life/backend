@@ -6,9 +6,9 @@
 
 import logging
 
-from flask import Flask
+from flask import Flask, request
 
-from .api import hello
+from .api import hello, get_latest_posts
 
 LOGGER = logging.getLogger('gunicorn.error')
 
@@ -25,3 +25,14 @@ def greeting():
     LOGGER.info("Responding to GET /api/v1/greeting")
 
     return hello()
+
+LOGGER.info("Added the route: GET /api/v1/slices/latest")
+@app.route('/api/v1/slices/latest', methods=['GET'])
+def latest_slices():
+    """
+        GET the most recent slices of life (posts)
+    """
+    limit = int(request.args.get('limit', 20))
+    offset = int(request.args.get('offset', 0))
+    LOGGER.info("Responding to GET /api/v1/slices/latest?limit=%d&offset=%d", limit, offset)
+    return get_latest_posts(limit, offset)
