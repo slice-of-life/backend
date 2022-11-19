@@ -4,9 +4,14 @@
     :module_author: Nathan Mendoza (nathancm@uci.edu)
 """
 
+import logging
+
 import psycopg2
+from psycopg2 import sql
 
 from ..exceptions import DatabaseNotConnectedError
+
+LOGGER = logging.getLogger('gunicorn.error')
 
 class Instance:
     """
@@ -14,11 +19,11 @@ class Instance:
     """
 
     def __init__(self, **config):
-        self._dbname = config.get("dbname", None)
-        self._dbuser = config.get("dbuser", None)
-        self._dbpass = config.get("dbpass", None)
-        self._dbhost = config.get("dbhost", None)
-        self._dbport = config.get("dbport", 5432) # postgresql default port
+        self._dbname = config.get("DBNAME")
+        self._dbuser = config.get("DBUSER")
+        self._dbpass = config.get("DBPASS")
+        self._dbhost = config.get("DBHOST")
+        self._dbport = config.get("DBPORT", 5432) # postgresql default port
         self._connection = None
 
     def connect(self) -> None:
@@ -27,6 +32,7 @@ class Instance:
         """
         if self._connection:
             return
+        LOGGER.debug("Establishing connection to psql://***@%s:%s", self._dbhost, self._dbport)
         self._connection = psycopg2.connect(dbname=self._dbname,
                                             user=self._dbuser,
                                             password=self._dbpass,
@@ -34,7 +40,7 @@ class Instance:
                                             port=self._dbport
                                             )
 
-    def query(self, sql: str) -> psycopg2.extensions.cursor:
+    def query(self, query: sql.SQL) -> psycopg2.extensions.cursor:
         """
             Execute the given sql query and return an iterable containing the results
             :arg sql: the query to execute
@@ -47,21 +53,6 @@ class Instance:
             raise DatabaseNotConnectedError("No active connection to execute query on")
 
         with self._connection.cursor() as conn:
-            conn.execute(sql)
-            return conn.fetchmany()
-
-    def query_one_row(self, sql: str) -> tuple:
-        """
-            Execute the given sql query and return a single tuple as the result
-            :arg sql: the query to execute
-            :arg type: str
-            :returns: query result if successful
-            :rtype: tuple
-            :throws: DatabaseNotConnectedError if no connection is established
-        """
-        if not self._connection:
-            raise DatabaseNotConnectedError("No active connection to execute query on")
-
-        with self._connection.cursor() as conn:
-            conn.execute(sql)
-            return conn.fetchone()
+            LOGGER.debug("Execute query: %s", query.as_string(self._connection))
+            conn.execute(query)
+            return conn.fetchall()
