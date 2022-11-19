@@ -18,3 +18,8 @@ class SliceOfLifeAPIException(SliceOfLifeBaseException):
     """
         Exception thrown when an API request cannot be completed succesfully
     """
+
+class ContentNotRetrievableError(SliceOfLifeBaseException):
+    """
+        Exception thrown when the CDN cannot be reached
+    """
