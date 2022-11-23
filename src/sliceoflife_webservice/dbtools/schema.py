@@ -50,8 +50,9 @@ class Reaction:
         A dataclass that represents a row in the Reactions table
     """
     reaction_id: int
-    react_to: Post
+    emoji_code: str
     react_by: User
+    react_to: Post
 
 @dataclass
 class Completion:
@@ -67,10 +68,11 @@ class Comment:
         A dataclass that represents a row in the Comments table
     """
     comment_id: int
+    created_id: datetime
     free_text: str
-    comment_on: Post
-    comment_by: User
     parent: Optional[Comment]
+    comment_by: User
+    comment_on: Post
 
 def interpret_as(datatype, data):
     """
