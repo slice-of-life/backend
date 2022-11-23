@@ -50,8 +50,9 @@ class Reaction:
         A dataclass that represents a row in the Reactions table
     """
     reaction_id: int
-    react_to: Post
+    emoji_code: str
     react_by: User
+    react_to: Post
 
 @dataclass
 class Completion:

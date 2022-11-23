@@ -13,8 +13,9 @@ from ..dbtools import Instance
 from ..toolkit import SpaceIndex
 from ..dbtools.queries import paginated_posts, specific_user, \
                               specific_task, specific_post, \
-                              top_level_comments, comments_responding_to
-from ..dbtools.schema import interpret_as, Post, User, Task, Comment
+                              top_level_comments, comments_responding_to, \
+                              reactions_by_group, reaction_counts, reactors_by_emoji
+from ..dbtools.schema import interpret_as, Post, User, Task, Comment, Reaction
 
 from ..exceptions import SliceOfLifeAPIException
 
@@ -149,3 +150,37 @@ def _get_responses(thread, slice_id) -> None:
     thread['responses'].extend(_non_orphaned_comments(slice_id, thread["comment"].comment_id))
     for subthread in thread['responses']:
         _get_responses(subthread, slice_id)
+
+def get_reactions_for_slice(slice_id: int) -> list:
+    """
+        A get method that returns the reactions for a given posts and the number of each occurence
+        :arg slice_id: the slice id to get reactions for
+        :returns: a list of each reaction and the number of times it occurs
+        :rtype list:
+        :throws SliceOfLifeAPIException: if the slice does not exist
+    """
+    get_slice_by_id(slice_id) # test for existing slice id
+    return [
+        {
+            "reaction": r.emoji_code,
+            "count": _reaction_occurences(r.emoji_code, slice_id),
+            "reactors": _reactors_for_slice(r.emoji_code, slice_id)
+        } for r in _reactions_for_slice(slice_id)
+    ]
+
+def _reactions_for_slice(slice_id: int) -> [Reaction]:
+    dbinstance = Instance(**dotenv_values())
+    dbinstance.connect()
+    return [ interpret_as(Reaction, r) for r in dbinstance.query(reactions_by_group(slice_id))]
+
+def _reaction_occurences(emoji_used: str, post_id: int) -> int:
+    dbinstance = Instance(**dotenv_values())
+    dbinstance.connect()
+    return dbinstance.query(reaction_counts(emoji_used, post_id))[0][0] #should only be a single number
+
+def _reactors_for_slice(emoji_used: str, post_id: int) -> [str]:
+    dbinstance = Instance(**dotenv_values())
+    dbinstance.connect()
+    return [
+        reactor[0] for reactor in dbinstance.query(reactors_by_emoji(emoji_used, post_id))
+    ]

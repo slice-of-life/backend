@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from flask import Flask, request
 
 from .api import hello, get_latest_posts, \
-                 get_slice_by_id, get_comments_for_slice
+                 get_slice_by_id, get_comments_for_slice, get_reactions_for_slice
 
 from .exceptions import SliceOfLifeBaseException
 
@@ -72,5 +72,13 @@ def comments_for_slice(slice_id: int):
         return (f"No such slice: {slice_id}", 404)
 
 LOGGER.info("Added the route: GET /api/v1/slices/<:id>/reactions")
-def reactions_for_slice():
-    pass
+@app.route('/api/v1/slices/<int:slice_id>/reactions', methods=['GET'])
+def reactions_for_slice(slice_id: int):
+    """
+        GET the reactions for a given post
+    """
+    try:
+        return get_reactions_for_slice(slice_id)
+    except SliceOfLifeBaseException as exc:
+        LOGGER.error("error occured while resopnding: %s", str(exc))
+        return (f"No such slice: {slice_id}", 404)
