@@ -11,7 +11,8 @@ from dataclasses import asdict
 from dotenv import load_dotenv
 from flask import Flask, request
 
-from .api import hello, get_latest_posts, get_slice_by_id
+from .api import hello, get_latest_posts, \
+                 get_slice_by_id, get_comments_for_slice
 
 from .exceptions import SliceOfLifeBaseException
 
@@ -45,7 +46,7 @@ def latest_slices():
     return get_latest_posts(limit, offset)
 
 LOGGER.info("Added the route: GET /api/v1/slices/<:id>")
-@app.route('/api/v1/slices/<int:slice_id>')
+@app.route('/api/v1/slices/<int:slice_id>', methods=['GET'])
 def slice_by_id(slice_id: int):
     """
         GET the slice by its ID (post)
@@ -58,8 +59,17 @@ def slice_by_id(slice_id: int):
         return (f"No such slice: {slice_id}", 404)
 
 LOGGER.info("Added the route: GET /api/v1/slices/<:id>/comments")
-def comments_for_slice():
-    pass
+@app.route('/api/v1/slices/<int:slice_id>/comments', methods=['GET'])
+def comments_for_slice(slice_id: int):
+    """
+        GET the comments for a given post
+    """
+    LOGGER.info("Responding to GET /api/v1/slices/%d/comments", slice_id)
+    try:
+        return get_comments_for_slice(slice_id)
+    except SliceOfLifeBaseException as exc:
+        LOGGER.error("Error occured while responding: %s", str(exc))
+        return (f"No such slice: {slice_id}", 404)
 
 LOGGER.info("Added the route: GET /api/v1/slices/<:id>/reactions")
 def reactions_for_slice():

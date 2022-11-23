@@ -11,8 +11,10 @@ from dotenv import dotenv_values
 
 from ..dbtools import Instance
 from ..toolkit import SpaceIndex
-from ..dbtools.queries import paginated_posts, specific_user, specific_task, specific_post
-from ..dbtools.schema import interpret_as, Post, User, Task
+from ..dbtools.queries import paginated_posts, specific_user, \
+                              specific_task, specific_post, \
+                              top_level_comments, comments_responding_to
+from ..dbtools.schema import interpret_as, Post, User, Task, Comment
 
 from ..exceptions import SliceOfLifeAPIException
 
@@ -83,7 +85,7 @@ def get_slice_by_id(slice_id: int) -> Post:
         :arg slice_id: The ID post to retrieve
         :returns: the corresponding post, it it exists
         :rtype: Post
-        :throws
+        :throws SliceOfLifeAPIException: when result size is not expected (1 excactly)
     """
     dbinstance = Instance(**dotenv_values())
     spaceindex = SpaceIndex(**dotenv_values())
@@ -100,3 +102,50 @@ def get_slice_by_id(slice_id: int) -> Post:
         pinfo.completes = _get_task_info(pinfo.completes)
     pinfo.image = spaceindex.get_share_link(pinfo.image)
     return pinfo
+
+def get_comments_for_slice(slice_id: int) -> dict:
+    """
+        A Get method that return the comments associated with a given post id, if it exists
+        :arg slice_id: The ID post to retrieve comments for
+        :returns: the associated comments (threads included)
+        :rtype: dict
+        :throws: SliceOfLifeAPIException: the post ID invalid
+    """
+    dbinstance = Instance(**dotenv_values())
+    spaceindex = SpaceIndex(**dotenv_values())
+    dbinstance.connect()
+    spaceindex.create_session()
+    pinfo = get_slice_by_id(slice_id)
+
+    return _build_comment_tree_for_slice(pinfo.post_id)
+
+def _build_comment_tree_for_slice(slice_id: int) -> dict:
+    tree = {"threads": _orphaned_comments(slice_id)}
+    for thread in tree["threads"]:
+        _get_responses(thread, slice_id)
+    return tree
+
+def _orphaned_comments(slice_id: int) -> list:
+    dbinstance = Instance(**dotenv_values())
+    dbinstance.connect()
+    return [
+            {
+                "comment": interpret_as(Comment, c),
+                "responses": []
+            } for c in dbinstance.query(top_level_comments(slice_id))
+    ]
+
+def _non_orphaned_comments(slice_id: int, parent_comment_id: int) -> list:
+    dbinstance = Instance(**dotenv_values())
+    dbinstance.connect()
+    return [
+        {
+            "comment": interpret_as(Comment, c),
+            "responses": []
+        } for c in dbinstance.query(comments_responding_to(slice_id, parent_comment_id))
+    ]
+
+def _get_responses(thread, slice_id) -> None:
+    thread['responses'].extend(_non_orphaned_comments(slice_id, thread["comment"].comment_id))
+    for subthread in thread['responses']:
+        _get_responses(subthread, slice_id)
