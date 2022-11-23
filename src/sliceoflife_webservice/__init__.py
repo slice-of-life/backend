@@ -6,11 +6,14 @@
 
 import logging
 import os
+from dataclasses import asdict
 
 from dotenv import load_dotenv
 from flask import Flask, request
 
-from .api import hello, get_latest_posts
+from .api import hello, get_latest_posts, get_slice_by_id
+
+from .exceptions import SliceOfLifeBaseException
 
 LOGGER = logging.getLogger('gunicorn.error')
 
@@ -40,3 +43,24 @@ def latest_slices():
     offset = int(request.args.get('offset', 0))
     LOGGER.info("Responding to GET /api/v1/slices/latest?limit=%d&offset=%d", limit, offset)
     return get_latest_posts(limit, offset)
+
+LOGGER.info("Added the route: GET /api/v1/slices/<:id>")
+@app.route('/api/v1/slices/<int:slice_id>')
+def slice_by_id(slice_id: int):
+    """
+        GET the slice by its ID (post)
+    """
+    LOGGER.info("Responding to GET /api/v1/slices/%d", slice_id)
+    try:
+        return asdict(get_slice_by_id(slice_id))
+    except SliceOfLifeBaseException as exc:
+        LOGGER.error("Error occurred while responding: %s", str(exc))
+        return (f"No such slice: {slice_id}", 404)
+
+LOGGER.info("Added the route: GET /api/v1/slices/<:id>/comments")
+def comments_for_slice():
+    pass
+
+LOGGER.info("Added the route: GET /api/v1/slices/<:id>/reactions")
+def reactions_for_slice():
+    pass

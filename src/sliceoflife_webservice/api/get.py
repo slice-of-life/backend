@@ -11,8 +11,10 @@ from dotenv import dotenv_values
 
 from ..dbtools import Instance
 from ..toolkit import SpaceIndex
-from ..dbtools.queries import paginated_posts, specific_user, specific_task
+from ..dbtools.queries import paginated_posts, specific_user, specific_task, specific_post
 from ..dbtools.schema import interpret_as, Post, User, Task
+
+from ..exceptions import SliceOfLifeAPIException
 
 LOGGER = logging.getLogger('gunicorn.error')
 
@@ -74,3 +76,27 @@ def _get_task_info(task_id: int) -> Task:
     query = specific_task(task_id)
     tinfo = interpret_as(Task, dbinstance.query(query)[0]) #should only be one anyway
     return tinfo
+
+def get_slice_by_id(slice_id: int) -> Post:
+    """
+        A GET method that returns the slice corresponding to the given ID, if it exists
+        :arg slice_id: The ID post to retrieve
+        :returns: the corresponding post, it it exists
+        :rtype: Post
+        :throws
+    """
+    dbinstance = Instance(**dotenv_values())
+    spaceindex = SpaceIndex(**dotenv_values())
+    dbinstance.connect()
+    spaceindex.create_session()
+    result = dbinstance.query(specific_post(slice_id))
+    if len(result) != 1:
+        raise SliceOfLifeAPIException(f"Expected a single result, got {len(result)}")
+
+    pinfo = interpret_as(Post, result[0]) #should only be one anyway
+    if not isinstance(pinfo.posted_by, User):
+        pinfo.posted_by = _get_basic_post_author_info(pinfo.posted_by)
+    if not isinstance(pinfo.completes, Task):
+        pinfo.completes = _get_task_info(pinfo.completes)
+    pinfo.image = spaceindex.get_share_link(pinfo.image)
+    return pinfo

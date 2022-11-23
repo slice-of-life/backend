@@ -4,4 +4,5 @@
     :module_author: Nathan Mendoza (nathancm@uci.edu)
 """
 
-from .get import hello, get_latest_posts
+from .get import hello, get_latest_posts, \
+                 get_slice_by_id

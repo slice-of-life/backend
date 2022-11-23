@@ -57,3 +57,18 @@ def specific_task(task_id: int) -> sql.SQL:
     """).format(
         id = sql.Literal(task_id)
     )
+
+def specific_post(post_id: int) -> sql.SQL:
+    """
+        SQL query that selects a specific post by the given id
+        :arg post_id: the id to query for
+        :returns: A templated SQL statement
+        :rtype: sql.SQL
+    """
+    return sql.SQL("""
+                    SELECT *
+                    FROM Posts p
+                    WHERE p.post_id = {id}
+    """).format(
+        id=sql.Literal(post_id)
+    )
