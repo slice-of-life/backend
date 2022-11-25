@@ -19,8 +19,8 @@ class BaseSliceOfLifeApiResponse(ABC):
         A base class for all slice of life API subclasses
         Has a single db and cdn connection with public references
     """
-    dbinstance: Instance
-    blobinstance: SpaceIndex
+    dbinstance: Instance = None
+    blobinstance: SpaceIndex = None
 
     @property
     def db_connection(self):
