@@ -11,8 +11,7 @@ from dataclasses import asdict
 from dotenv import load_dotenv
 from flask import Flask, request
 
-from .api import hello, get_latest_posts, \
-                 get_slice_by_id, get_comments_for_slice, get_reactions_for_slice
+from .api.get import SliceOfLifeApiGetResponse
 
 from .exceptions import SliceOfLifeBaseException
 
@@ -32,7 +31,7 @@ def greeting():
     """
     LOGGER.info("Responding to GET /api/v1/greeting")
 
-    return hello()
+    return SliceOfLifeApiGetResponse().hello()
 
 LOGGER.info("Added the route: GET /api/v1/slices/latest")
 @app.route('/api/v1/slices/latest', methods=['GET'])
@@ -43,7 +42,7 @@ def latest_slices():
     limit = int(request.args.get('limit', 20))
     offset = int(request.args.get('offset', 0))
     LOGGER.info("Responding to GET /api/v1/slices/latest?limit=%d&offset=%d", limit, offset)
-    return get_latest_posts(limit, offset)
+    return SliceOfLifeApiGetResponse().get_latest_posts(limit, offset)
 
 LOGGER.info("Added the route: GET /api/v1/slices/<:id>")
 @app.route('/api/v1/slices/<int:slice_id>', methods=['GET'])
@@ -53,7 +52,7 @@ def slice_by_id(slice_id: int):
     """
     LOGGER.info("Responding to GET /api/v1/slices/%d", slice_id)
     try:
-        return asdict(get_slice_by_id(slice_id))
+        return asdict(SliceOfLifeApiGetResponse().get_slice_by_id(slice_id))
     except SliceOfLifeBaseException as exc:
         LOGGER.error("Error occurred while responding: %s", str(exc))
         return (f"No such slice: {slice_id}", 404)
@@ -66,7 +65,7 @@ def comments_for_slice(slice_id: int):
     """
     LOGGER.info("Responding to GET /api/v1/slices/%d/comments", slice_id)
     try:
-        return get_comments_for_slice(slice_id)
+        return SliceOfLifeApiGetResponse().get_comments_for_slice(slice_id)
     except SliceOfLifeBaseException as exc:
         LOGGER.error("Error occured while responding: %s", str(exc))
         return (f"No such slice: {slice_id}", 404)
@@ -78,7 +77,7 @@ def reactions_for_slice(slice_id: int):
         GET the reactions for a given post
     """
     try:
-        return get_reactions_for_slice(slice_id)
+        return SliceOfLifeApiGetResponse().get_reactions_for_slice(slice_id)
     except SliceOfLifeBaseException as exc:
         LOGGER.error("error occured while resopnding: %s", str(exc))
         return (f"No such slice: {slice_id}", 404)
