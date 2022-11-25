@@ -38,7 +38,7 @@ activate:
 	@echo 
 .PHONY: test
 test:
-	pytest --cov=api --verbose test/
+	pytest --cov=sliceoflife_webservice --verbose test/
 
 .PHONY: lint
 lint:
