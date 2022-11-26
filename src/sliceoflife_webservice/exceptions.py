@@ -28,3 +28,13 @@ class DuplicateHandleError(SliceOfLifeBaseException):
     """
         Exception thrown when a user is attempted to be created with a handle already in use
     """
+
+class NoSuchUserError(SliceOfLifeAPIException):
+    """
+        Exception thrown when authentication is attempted with a nonexistent handle
+    """
+
+class InvalidCredentialsError(SliceOfLifeAPIException):
+    """
+        Exception thrown whan authenticating with invalid credentials
+    """
