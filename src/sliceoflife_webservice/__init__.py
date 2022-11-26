@@ -9,18 +9,20 @@ import os
 from dataclasses import asdict
 
 from dotenv import load_dotenv
-from flask import Flask, request
+from flask import Flask, request, session
 
 from .api.get import SliceOfLifeApiGetResponse
 from .api.post import SliceOfLifeApiPostResponse
 
-from .exceptions import SliceOfLifeBaseException, DuplicateHandleError
+from .exceptions import SliceOfLifeBaseException, DuplicateHandleError, \
+                        NoSuchUserError, InvalidCredentialsError
 
 LOGGER = logging.getLogger('gunicorn.error')
 
 load_dotenv()
 
 app = Flask(__name__)
+app.secret_key = os.getenv('APP_SESSION_KEY')
 
 LOGGER.info("Created an API application instance")
 
@@ -104,3 +106,29 @@ def create_new_user():
     except SliceOfLifeBaseException as exc:
         LOGGER.error("Exception occurred while responding: %s", str(exc))
         return (str(exc), 500)
+
+LOGGER.info("Added the route: POST /api/v1/users/authenticate")
+@app.route('/api/v1/users/authenticate', methods=['POST'])
+def authenticate_user():
+    """
+        Authenticate the user. Gives the client an auth token if successful that can be used later
+    """
+    form_data = {
+        'handle': request.form['handle'],
+        'password': request.form['password']
+    }
+    try:
+        auth_token = SliceOfLifeApiPostResponse(**form_data).authenticate_user()
+        session[request.form['handle']] = auth_token
+        return {
+            'token': auth_token
+        }
+    except NoSuchUserError:
+        LOGGER.error("No such credentials: %s", form_data['handle'])
+        return ("Invalid handle/password", 403)
+    except InvalidCredentialsError:
+        LOGGER.error("Credentials did not match")
+        return ("Invalid handle/password", 403)
+    except SliceOfLifeBaseException as exc:
+        LOGGER.error("Error occured while responding: %s", str(exc))
+        return ("Internal server error", 500)
