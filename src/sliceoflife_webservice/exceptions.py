@@ -23,3 +23,8 @@ class ContentNotRetrievableError(SliceOfLifeBaseException):
     """
         Exception thrown when the CDN cannot be reached
     """
+
+class DuplicateHandleError(SliceOfLifeBaseException):
+    """
+        Exception thrown when a user is attempted to be created with a handle already in use
+    """
