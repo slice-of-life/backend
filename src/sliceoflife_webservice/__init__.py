@@ -12,8 +12,9 @@ from dotenv import load_dotenv
 from flask import Flask, request
 
 from .api.get import SliceOfLifeApiGetResponse
+from .api.post import SliceOfLifeApiPostResponse
 
-from .exceptions import SliceOfLifeBaseException
+from .exceptions import SliceOfLifeBaseException, DuplicateHandleError
 
 LOGGER = logging.getLogger('gunicorn.error')
 
@@ -79,5 +80,27 @@ def reactions_for_slice(slice_id: int):
     try:
         return SliceOfLifeApiGetResponse().get_reactions_for_slice(slice_id)
     except SliceOfLifeBaseException as exc:
-        LOGGER.error("error occured while resopnding: %s", str(exc))
+        LOGGER.error("error occured while responding: %s", str(exc))
         return (f"No such slice: {slice_id}", 404)
+
+LOGGER.info("Added the route: POST /api/v1/users/account/new")
+@app.route('/api/v1/users/account/new', methods=['POST'])
+def create_new_user():
+    """
+        Create a new slice of life user account. Only basic information required to get started
+    """
+    form_data = {
+        'handle': request.form['handle'],
+        'email': request.form['email'],
+        'password': request.form['password'],
+        'first_name': request.form['first_name'],
+        'last_name': request.form['last_name'],
+    }
+    try:
+        return SliceOfLifeApiPostResponse(**form_data).create_user()
+    except DuplicateHandleError as exc:
+        LOGGER.error("Duplicate handle: %s", str(exc))
+        return ("Handle unavailable", 403)
+    except SliceOfLifeBaseException as exc:
+        LOGGER.error("Exception occurred while responding: %s", str(exc))
+        return (str(exc), 500)
