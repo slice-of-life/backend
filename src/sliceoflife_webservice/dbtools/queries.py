@@ -6,6 +6,8 @@
 
 import logging
 
+from .schema import User
+
 from psycopg2 import sql
 
 LOGGER = logging.getLogger('gunicorn.error')
@@ -158,4 +160,24 @@ def reactors_by_emoji(emoji_code: str, post_id: int) -> sql.SQL:
     """).format(
         id =sql.Literal(post_id),
         code=sql.Literal(emoji_code)
+    )
+
+def insert_user_account(new_user: User) -> sql.SQL:
+    """
+        SQL query that inserts the given user object into the database
+        :arg new_user: the user being added
+        :returns: A templated SQL statement
+        :rtype: sql.SQL
+    """
+    return sql.SQL("""
+                    INSERT INTO Users VALUES
+                    ({handle}, {password}, {email}, {salt}, {first}, {last}, {avatar})
+    """).format(
+        handle=sql.Literal(new_user.handle),
+        password=sql.Literal(new_user.password_hash),
+        email=sql.Literal(new_user.email),
+        salt=sql.Literal(new_user.salt),
+        first=sql.Literal(new_user.first_name),
+        last=sql.Literal(new_user.last_name),
+        avatar=sql.Literal(new_user.profile_pic)
     )

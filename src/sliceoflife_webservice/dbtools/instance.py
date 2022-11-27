@@ -40,12 +40,12 @@ class Instance:
                                             host=self._dbhost,
                                             port=self._dbport
                                             )
+        self._connection.autocommit = True
 
     def query(self, query: sql.SQL) -> psycopg2.extensions.cursor:
         """
             Execute the given sql query and return an iterable containing the results
             :arg sql: the query to execute
-            :arg type: str
             :returns: query result if successful
             :rtype: psycopg2.extensions.cursor
             :throws: DatabaseNotConnectedError if no connection is established
@@ -57,3 +57,18 @@ class Instance:
             LOGGER.debug("Execute query: %s", query.as_string(self._connection))
             conn.execute(query)
             return conn.fetchall()
+
+    def query_no_fetch(self, query: sql.SQL) -> None:
+        """
+            Execute the given sql query and return nothing. Useful for insertion or deletion
+            :arg sql: the query to execute
+            :returns: nothing
+            :rtype: NoneType
+            :throws: DatabaseNotConnectedError if no connection is established
+        """
+        if not self._connection:
+            raise DatabaseNotConnectedError("No active connection ot execute query on")
+
+        with self._connection.cursor() as conn:
+            LOGGER.debug("Execute query: %s", query.as_string(self._connection))
+            conn.execute(query)
