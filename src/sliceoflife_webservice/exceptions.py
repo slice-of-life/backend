@@ -38,3 +38,8 @@ class InvalidCredentialsError(SliceOfLifeAPIException):
     """
         Exception thrown whan authenticating with invalid credentials
     """
+
+class NotAuthorizedError(SliceOfLifeAPIException):
+    """
+        Exception thown when a user is not authorized to perform an action
+    """
