@@ -5,14 +5,17 @@
 """
 
 import logging
-import os
+import pathlib
 import hashlib
 import secrets
+import datetime
 
 from . import BaseSliceOfLifeApiResponse
-from ..exceptions import DuplicateHandleError, NoSuchUserError, InvalidCredentialsError
-from ..dbtools.queries import specific_user, insert_user_account
-from ..dbtools.schema import interpret_as, User
+from ..exceptions import DuplicateHandleError, NoSuchUserError, \
+                         InvalidCredentialsError, NotAuthorizedError
+from ..dbtools.queries import specific_user, insert_user_account, \
+                              insert_post, insert_completion
+from ..dbtools.schema import interpret_as, User, Post, Completion
 
 LOGGER = logging.getLogger('gunicorn.error')
 
@@ -50,6 +53,17 @@ class SliceOfLifeApiPostResponse(BaseSliceOfLifeApiResponse):
         except IndexError as exc:
             raise NoSuchUserError(f"No user with handle {self._data['handle']}") from exc
 
+    def create_new_post(self) -> dict:
+        """
+            Create a new post. On success, return the saved data
+            :returns: post data
+            :rtype: dict
+        """
+        if secrets.compare_digest(self._data['token'], self._data['expected']):
+            self._insert_post_record()
+            return "CREATED"
+        raise NotAuthorizedError(f"{self._data['handle']} is not authorized to make a post")
+
     def _handle_is_available(self) -> bool:
         return not self.db_connection.query(specific_user(self._data['handle']))
 
@@ -75,3 +89,31 @@ class SliceOfLifeApiPostResponse(BaseSliceOfLifeApiResponse):
 
     def _generate_auth_token(self) -> str:
         return secrets.token_hex()
+
+    def _insert_post_record(self) -> None:
+        new_post = Post(
+            post_id=None,
+            free_text=self._data['free_text'],
+            image=self._save_post_data(),
+            created_at=datetime.datetime.utcnow(),
+            posted_by=self._data['handle'],
+            completes=self._data['task_id']
+        )
+
+        new_completion = Completion(
+            completed_by=self._data['handle'],
+            completed_task=self._data['task_id']
+        )
+
+        self.db_connection.query_no_fetch(insert_post(new_post))
+        self.db_connection.query_no_fetch(insert_completion(new_completion))
+
+    def _save_post_data(self) -> str:
+        file_location = f"posts/{self._data['handle']}" \
+                        + f"/task{self._data['task_id']}" \
+                        + f"{pathlib.Path(self._data['slice_image'].filename).suffix}"
+        self.cdn_session.save_file(
+            file_location,
+            self._data['slice_image']
+        )
+        return file_location
