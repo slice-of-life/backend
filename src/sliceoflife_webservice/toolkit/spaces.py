@@ -6,6 +6,7 @@
 
 import logging
 import os
+import pathlib
 
 import boto3
 
@@ -60,4 +61,27 @@ class SpaceIndex:
                 'Key': path_to_file
             },
             ExpiresIn=self.SPACES_SHARE_TIME
+        )
+
+    def save_file(self, save_as: str, file_to_save) -> None:
+        """
+            save the given file under the given name
+            :arg save_as: filename to use
+            :arg file_to_save: file-like object to save
+            :returns: nothing
+            :rtype: NoneType
+            :throws: ContentNotRetrievableError if no session is active
+        """
+
+        if not self._session:
+            raise ContentNotRetrievableError("no session exists to interact with application CDN")
+
+        LOGGER.debug("Received the file: %s", file_to_save.filename)
+        LOGGER.debug("Saving the file as: %s", save_as)
+        self._session.put_object(
+            Bucket=self.SPACES_BUCKET,
+            Key=save_as,
+            Body=file_to_save,
+            ACL='private',
+            ContentType='image/*'
         )

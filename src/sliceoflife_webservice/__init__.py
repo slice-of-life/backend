@@ -15,7 +15,7 @@ from .api.get import SliceOfLifeApiGetResponse
 from .api.post import SliceOfLifeApiPostResponse
 
 from .exceptions import SliceOfLifeBaseException, DuplicateHandleError, \
-                        NoSuchUserError, InvalidCredentialsError
+                        NoSuchUserError, InvalidCredentialsError, NotAuthorizedError
 
 LOGGER = logging.getLogger('gunicorn.error')
 
@@ -132,3 +132,29 @@ def authenticate_user():
     except SliceOfLifeBaseException as exc:
         LOGGER.error("Error occured while responding: %s", str(exc))
         return ("Internal server error", 500)
+
+LOGGER.info("Added the route: POST /api/v1/slices/new")
+@app.route('/api/v1/slices/new', methods=['POST'])
+def new_post():
+    """
+        Create a new post, if the user is authenicated
+
+    """
+    auth_data = {
+        'handle': request.form['handle'],
+        'token': request.form['token'],
+        'expected': session[request.form['handle']] or ''
+    }
+    slice_content = {
+        'slice_image': request.files['slice_image'],
+        'free_text': request.form['free_text'],
+        'task_id': request.form['task_id']
+    }
+    try:
+        return SliceOfLifeApiPostResponse(**auth_data, **slice_content).create_new_post()
+    except NotAuthorizedError:
+        LOGGER.error("User with handle %s is not authorized to create a post", auth_data['handle'])
+        return ("Not authorized", 403)
+    except SliceOfLifeBaseException as exc:
+        LOGGER.error("Error occured whiles responding: %s", str(exc))
+        return ("Interal server error", 500)

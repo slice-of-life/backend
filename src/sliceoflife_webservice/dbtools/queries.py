@@ -6,7 +6,7 @@
 
 import logging
 
-from .schema import User
+from .schema import User, Post, Completion
 
 from psycopg2 import sql
 
@@ -180,4 +180,37 @@ def insert_user_account(new_user: User) -> sql.SQL:
         first=sql.Literal(new_user.first_name),
         last=sql.Literal(new_user.last_name),
         avatar=sql.Literal(new_user.profile_pic)
+    )
+
+def insert_post(new_post: Post) -> sql.SQL:
+    """
+        SQL query that inserts the given post object into the database
+        :arg new_post: the post being added
+        :returns: A templated SQL statement
+        :rtype: sql.SQL
+    """
+    return sql.SQL("""
+                    INSERT INTO Posts VALUES
+                    (DEFAULT, {free_text}, {image_url}, {created_at}, {post_author}, {task_completed})
+    """).format(
+        free_text=sql.Literal(new_post.free_text),
+        image_url=sql.Literal(new_post.image),
+        created_at=sql.Literal(new_post.created_at),
+        post_author=sql.Literal(new_post.posted_by),
+        task_completed=sql.Literal(new_post.completes)
+    )
+
+def insert_completion(new_completion: Completion) -> sql.SQL:
+    """
+        SQL query that inserts the given completion object into the database
+        :arg new_completion: the completion being marked
+        :returns: A templated SQL statement
+        :rtype: sql.SQL
+    """
+    return sql.SQL("""
+                    INSERT INTO Completes VALUES
+                    ({user}, {task})
+    """).format(
+        user=sql.Literal(new_completion.completed_by),
+        task=sql.Literal(new_completion.completed_task)
     )
