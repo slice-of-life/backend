@@ -131,7 +131,7 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
     def _orphaned_comments(self, slice_id: int) -> list:
         return [
                 {
-                    "comment": interpret_as(Comment, c),
+                    "comment": self._comment_with_author(c),
                     "responses": []
                 } for c in self.db_connection.query(top_level_comments(slice_id))
         ]
@@ -139,7 +139,7 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
     def _non_orphaned_comments(self, slice_id: int, parent_comment_id: int) -> list:
         return [
             {
-                "comment": interpret_as(Comment, c),
+                "comment": self._comment_with_author(c),
                 "responses": []
             } for c in self.db_connection.query(comments_responding_to(slice_id, parent_comment_id))
         ]
@@ -150,6 +150,11 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
         )
         for subthread in thread['responses']:
             self._get_responses(subthread, slice_id)
+
+    def _comment_with_author(self, comment_data) -> dict:
+        comment_instance = interpret_as(Comment, comment_data)
+        comment_instance.comment_by = self._get_basic_post_author_info(comment_instance.comment_by)
+        return comment_instance
 
     def _reactions_for_slice(self, slice_id: int) -> [Reaction]:
         return [
