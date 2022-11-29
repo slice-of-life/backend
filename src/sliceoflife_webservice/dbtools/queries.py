@@ -214,3 +214,41 @@ def insert_completion(new_completion: Completion) -> sql.SQL:
         user=sql.Literal(new_completion.completed_by),
         task=sql.Literal(new_completion.completed_task)
     )
+
+def available_tasks(user_handle: str) -> sql.SQL:
+    """
+        SQL query that gathers the tasks a given user can complete
+        :arg user_handle: the user to gather available tasks for
+        :returns: A templated SQL statement
+        :rtype: sql.SQL
+    """
+    return sql.SQL("""
+                    SELECT *
+                    FROM Tasks t
+                    WHERE t.task_id NOT IN (
+                        SELECT completed_task
+                        FROM Completes c
+                        WHERE c.completed_by = {handle}
+                    )
+    """).format(
+        handle=sql.Literal(user_handle)
+    )
+
+def completed_tasks(user_handle: str) -> sql.SQL:
+    """
+        SQL query that gathers the tasks a given user has completed
+        :arg user_handle: the user to gather completed tasks for
+        :returns: A templated SQL statement
+        :rtype: sql.SQL
+    """
+    return sql.SQL("""
+                    SELECT *
+                    FROM Tasks t
+                    WHERE t.task_id IN (
+                        SELECT completed_task
+                        FROM Completes c
+                        WHERE c.completed_by = {handle}
+                    )
+    """).format(
+        handle=sql.Literal(user_handle)
+    )

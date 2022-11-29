@@ -7,6 +7,7 @@
 import logging
 import os
 from dataclasses import asdict
+from secrets import compare_digest
 
 from dotenv import load_dotenv
 from flask import Flask, request, session
@@ -84,6 +85,42 @@ def reactions_for_slice(slice_id: int):
     except SliceOfLifeBaseException as exc:
         LOGGER.error("error occured while responding: %s", str(exc))
         return (f"No such slice: {slice_id}", 404)
+
+LOGGER.info("Added the route: GET /api/v1/users/<:handle>/profile")
+@app.route('/api/v1/users/<string:handle>/profile', methods=['GET'])
+def user_profile_information(handle: str):
+    """
+        GET the basic profile information for a given user handle
+    """
+    token = request.args.get("token", str())
+    try:
+        if handle in session and compare_digest(token, session[handle]):
+            return asdict(SliceOfLifeApiGetResponse().get_user_profile(handle))
+        raise NotAuthorizedError("Tokens do not match")
+    except NotAuthorizedError as exc:
+        LOGGER.error("authentication error while responding: %s", str(exc))
+        return ("Invalid token", 403)
+    except SliceOfLifeBaseException as exc:
+        LOGGER.error("error occured while responding: %s", str(exc))
+        return (f"No such profile: {handle}", 404)
+
+LOGGER.info("Added the route: GET /api/v1/users/<:handle>/tasklist")
+@app.route('/api/v1/users/<string:handle>/tasklist', methods=['GET'])
+def user_task_list(handle: str):
+    """
+        GET the task list for the given user
+    """
+    token = request.args.get("token", str())
+    try:
+        if handle in session and compare_digest(token, session[handle]):
+            return SliceOfLifeApiGetResponse().get_user_tasklist(handle)
+        raise NotAuthorizedError("Tokens do not match")
+    except NotAuthorizedError as exc:
+        LOGGER.error("authetication error while responding: %s", str(exc))
+        return ("Invalid token", 403)
+    except SliceOfLifeBaseException as exc:
+        LOGGER.error("error occured while responding: %s", str(exc))
+        return (f"No such handle: {handle}", 404)
 
 LOGGER.info("Added the route: POST /api/v1/users/account/new")
 @app.route('/api/v1/users/account/new', methods=['POST'])

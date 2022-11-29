@@ -12,7 +12,8 @@ from . import BaseSliceOfLifeApiResponse
 from ..dbtools.queries import paginated_posts, specific_user, \
                               specific_task, specific_post, \
                               top_level_comments, comments_responding_to, \
-                              reactions_by_group, reaction_counts, reactors_by_emoji
+                              reactions_by_group, reaction_counts, reactors_by_emoji, \
+                              available_tasks, completed_tasks
 from ..dbtools.schema import interpret_as, Post, User, Task, Comment, Reaction
 
 from ..exceptions import SliceOfLifeAPIException
@@ -106,6 +107,27 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
             } for r in self._reactions_for_slice(slice_id)
         ]
 
+    def get_user_profile(self, handle) -> User:
+        """
+            A get method that returns basic user information. Must be authorized to view
+            :arg handle: the handle of the user to obtain profile info on
+            :returns: basic user information
+            :rtype: User
+        """
+        return self._get_basic_post_author_info(handle)
+
+    def get_user_tasklist(self, handle) -> dict:
+        """
+            A get method that a collection of tasks a user has completed and has not completed
+            :arg handle: the handle of the user to obtain the task list for
+            :returns: task information
+            :rtype: dict
+        """
+        return {
+            "completed": self._get_users_completed_tasks(handle),
+            "available": self._get_users_available_tasks(handle)
+        }
+
     def _get_basic_post_author_info(self, author_handle: str) -> User:
         query = specific_user(author_handle)
         uinfo = interpret_as(User, self.db_connection.query(query)[0]) #should only be one anyway
@@ -131,7 +153,7 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
     def _orphaned_comments(self, slice_id: int) -> list:
         return [
                 {
-                    "comment": interpret_as(Comment, c),
+                    "comment": self._comment_with_author(c),
                     "responses": []
                 } for c in self.db_connection.query(top_level_comments(slice_id))
         ]
@@ -139,7 +161,7 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
     def _non_orphaned_comments(self, slice_id: int, parent_comment_id: int) -> list:
         return [
             {
-                "comment": interpret_as(Comment, c),
+                "comment": self._comment_with_author(c),
                 "responses": []
             } for c in self.db_connection.query(comments_responding_to(slice_id, parent_comment_id))
         ]
@@ -150,6 +172,11 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
         )
         for subthread in thread['responses']:
             self._get_responses(subthread, slice_id)
+
+    def _comment_with_author(self, comment_data) -> dict:
+        comment_instance = interpret_as(Comment, comment_data)
+        comment_instance.comment_by = self._get_basic_post_author_info(comment_instance.comment_by)
+        return comment_instance
 
     def _reactions_for_slice(self, slice_id: int) -> [Reaction]:
         return [
@@ -164,5 +191,17 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
 
     def _reactors_for_slice(self, emoji_used: str, post_id: int) -> [str]:
         return [
-            reactor[0] for reactor in self.dbinstance.query(reactors_by_emoji(emoji_used, post_id))
+            reactor[0] for reactor in self.db_connection.query(
+                reactors_by_emoji(emoji_used, post_id)
+            )
+        ]
+
+    def _get_users_available_tasks(self, user_handle: str) -> [Task]:
+        return [
+            interpret_as(Task, t) for t in self.db_connection.query(available_tasks(user_handle))
+        ]
+
+    def _get_users_completed_tasks(self, user_handle) -> [Task]:
+        return [
+            interpret_as(Task, t) for t in self.db_connection.query(completed_tasks(user_handle))
         ]
