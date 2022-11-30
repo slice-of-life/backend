@@ -31,10 +31,11 @@ class SliceOfLifeApiPostResponse(BaseSliceOfLifeApiResponse):
         """
             Creates a new user account for the slice of life application
         """
-        if self._handle_is_available():
-            self._make_user_account()
-            return f"CREATED {self._data['handle']}"
-        raise DuplicateHandleError(f"{self._data['handle']} is not available")
+        with self.db_connection:
+            if self._handle_is_available():
+                self._make_user_account()
+                return f"CREATED {self._data['handle']}"
+            raise DuplicateHandleError(f"{self._data['handle']} is not available")
 
     def authenticate_user(self) -> str:
         """
@@ -42,16 +43,17 @@ class SliceOfLifeApiPostResponse(BaseSliceOfLifeApiResponse):
             :returns: auth token
             :rtype: str
         """
-        try:
-            expected_uinfo = interpret_as(
-                User,
-                self.db_connection.query(specific_user(self._data['handle']))[0]
-            )
-            if self._credentials_are_valid(expected_uinfo):
-                return self._generate_auth_token()
-            raise InvalidCredentialsError("Incorrect handle or password")
-        except IndexError as exc:
-            raise NoSuchUserError(f"No user with handle {self._data['handle']}") from exc
+        with self.db_connection:
+            try:
+                expected_uinfo = interpret_as(
+                    User,
+                    self.db_connection.query(specific_user(self._data['handle']))[0]
+                )
+                if self._credentials_are_valid(expected_uinfo):
+                    return self._generate_auth_token()
+                raise InvalidCredentialsError("Incorrect handle or password")
+            except IndexError as exc:
+                raise NoSuchUserError(f"No user with handle {self._data['handle']}") from exc
 
     def create_new_post(self) -> dict:
         """
@@ -59,10 +61,11 @@ class SliceOfLifeApiPostResponse(BaseSliceOfLifeApiResponse):
             :returns: post data
             :rtype: dict
         """
-        if secrets.compare_digest(self._data['token'], self._data['expected']):
-            self._insert_post_record()
-            return "CREATED"
-        raise NotAuthorizedError(f"{self._data['handle']} is not authorized to make a post")
+        with self.db_connection:
+            if secrets.compare_digest(self._data['token'], self._data['expected']):
+                self._insert_post_record()
+                return "CREATED"
+            raise NotAuthorizedError(f"{self._data['handle']} is not authorized to make a post")
 
     def _handle_is_available(self) -> bool:
         return not self.db_connection.query(specific_user(self._data['handle']))

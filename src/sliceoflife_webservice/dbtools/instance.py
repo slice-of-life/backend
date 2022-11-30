@@ -9,6 +9,7 @@ import os
 
 import psycopg2
 from psycopg2 import sql
+from psycopg2.extensions import ISOLATION_LEVEL_READ_COMMITTED
 
 from ..exceptions import DatabaseNotConnectedError
 
@@ -40,7 +41,7 @@ class Instance:
                                             host=self._dbhost,
                                             port=self._dbport
                                             )
-        self._connection.autocommit = True
+        self._connection.set_isolation_level(ISOLATION_LEVEL_READ_COMMITTED)
 
     def query(self, query: sql.SQL) -> psycopg2.extensions.cursor:
         """
@@ -72,3 +73,18 @@ class Instance:
         with self._connection.cursor() as conn:
             LOGGER.debug("Execute query: %s", query.as_string(self._connection))
             conn.execute(query)
+
+    def __enter__(self):
+        if not self._connection:
+            self.connect()
+        LOGGER.debug("BEGIN TRANSACTION")
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        if exc_value:
+            self._connection.rollback()
+            LOGGER.debug("Exception occured durring transaction: %s", str(exc_value))
+            LOGGER.debug("TRANSACTION CANCELLED")
+        else:
+            self._connection.commit()
+            LOGGER.debug("TRANSACTION COMMITTED")
