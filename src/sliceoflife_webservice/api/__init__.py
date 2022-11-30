@@ -19,8 +19,8 @@ class BaseSliceOfLifeApiResponse(ABC):
         A base class for all slice of life API subclasses
         Has a single db and cdn connection with public references
     """
-    dbinstance: Instance = None
-    blobinstance: SpaceIndex = None
+    dbinstance: Instance = Instance(**dotenv_values())
+    blobinstance: SpaceIndex = SpaceIndex(**dotenv_values())
 
     @property
     def db_connection(self):
@@ -29,11 +29,6 @@ class BaseSliceOfLifeApiResponse(ABC):
             :returns: reference to dbinstance
             :rtype: Instance
         """
-        if not BaseSliceOfLifeApiResponse.dbinstance:
-            LOGGER.debug("Creating single database connection")
-            BaseSliceOfLifeApiResponse.dbinstance = Instance(**dotenv_values())
-            BaseSliceOfLifeApiResponse.dbinstance.connect()
-
         LOGGER.debug("Returning shared database connection")
         return BaseSliceOfLifeApiResponse.dbinstance
 
@@ -44,9 +39,8 @@ class BaseSliceOfLifeApiResponse(ABC):
             :returns: shared cdn session
             :rtype: SpaceIndex
         """
-        if not BaseSliceOfLifeApiResponse.blobinstance:
-            LOGGER.debug("Creating single cdn session")
-            BaseSliceOfLifeApiResponse.blobinstance = SpaceIndex(**dotenv_values())
+        if not BaseSliceOfLifeApiResponse.blobinstance.has_active_session():
+            LOGGER.debug("Creating single CDN session")
             BaseSliceOfLifeApiResponse.blobinstance.create_session()
 
         LOGGER.debug("Returning shared cdn session")

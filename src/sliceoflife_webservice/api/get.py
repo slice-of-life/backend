@@ -24,6 +24,7 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
     """
         A subclass of SliceOfLifeApiResponse for specifically responding to GET request
     """
+    base_url = os.getenv('BASE_URL')
 
     def hello(self) -> dict:
         """
@@ -44,19 +45,21 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
             :returns: a JSON object of posts and their associated information
             :rtype: dict
         """
-        query = paginated_posts(limit, offset)
-        results = self.db_connection.query(query)
-        results = [interpret_as(Post, r) for r in results]
-        for res in results:
-            if not isinstance(res.posted_by, User):
-                res.posted_by = self._get_basic_post_author_info(res.posted_by)
-            if not isinstance(res.completes, Task):
-                res.completes = self._get_task_info(res.completes)
-            res.image = self.cdn_session.get_share_link(res.image)
-        return {
-            "page": results,
-            "next": f"{os.getenv('BASE_URL')}/api/v1/slices/latest?limit={limit}&offset={offset + len(results)}"
-        }
+        with self.db_connection:
+            query = paginated_posts(limit, offset)
+            results = self.db_connection.query(query)
+            results = [interpret_as(Post, r) for r in results]
+            for res in results:
+                if not isinstance(res.posted_by, User):
+                    res.posted_by = self._get_basic_post_author_info(res.posted_by)
+                if not isinstance(res.completes, Task):
+                    res.completes = self._get_task_info(res.completes)
+                res.image = self.cdn_session.get_share_link(res.image)
+            return {
+                "page": results,
+                "next":
+                f"{self.base_url}/api/v1/slices/latest?limit={limit}&offset={offset + len(results)}"
+            }
 
     def get_slice_by_id(self, slice_id: int) -> Post:
         """
@@ -66,17 +69,18 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
             :rtype: Post
             :throws SliceOfLifeAPIException: when result size is not expected (1 excactly)
         """
-        result = self.db_connection.query(specific_post(slice_id))
-        if len(result) != 1:
-            raise SliceOfLifeAPIException(f"Expected a single result, got {len(result)}")
+        with self.db_connection:
+            result = self.db_connection.query(specific_post(slice_id))
+            if len(result) != 1:
+                raise SliceOfLifeAPIException(f"Expected a single result, got {len(result)}")
 
-        pinfo = interpret_as(Post, result[0]) #should only be one anyway
-        if not isinstance(pinfo.posted_by, User):
-            pinfo.posted_by = self._get_basic_post_author_info(pinfo.posted_by)
-        if not isinstance(pinfo.completes, Task):
-            pinfo.completes = self._get_task_info(pinfo.completes)
-        pinfo.image = self.cdn_session.get_share_link(pinfo.image)
-        return pinfo
+            pinfo = interpret_as(Post, result[0]) #should only be one anyway
+            if not isinstance(pinfo.posted_by, User):
+                pinfo.posted_by = self._get_basic_post_author_info(pinfo.posted_by)
+            if not isinstance(pinfo.completes, Task):
+                pinfo.completes = self._get_task_info(pinfo.completes)
+            pinfo.image = self.cdn_session.get_share_link(pinfo.image)
+            return pinfo
 
     def get_comments_for_slice(self, slice_id: int) -> dict:
         """
@@ -86,9 +90,10 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
             :rtype: dict
             :throws: SliceOfLifeAPIException: the post ID invalid
         """
-        pinfo = self.get_slice_by_id(slice_id)
+        with self.db_connection:
+            pinfo = self.get_slice_by_id(slice_id)
 
-        return self._build_comment_tree_for_slice(pinfo.post_id)
+            return self._build_comment_tree_for_slice(pinfo.post_id)
 
     def get_reactions_for_slice(self, slice_id: int) -> list:
         """
@@ -98,14 +103,15 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
             :rtype list:
             :throws SliceOfLifeAPIException: if the slice does not exist
         """
-        self.get_slice_by_id(slice_id) # test for existing slice id
-        return [
-            {
-                "reaction": r.emoji_code,
-                "count": self._reaction_occurences(r.emoji_code, slice_id),
-                "reactors": self._reactors_for_slice(r.emoji_code, slice_id)
-            } for r in self._reactions_for_slice(slice_id)
-        ]
+        with self.db_connection:
+            self.get_slice_by_id(slice_id) # test for existing slice id
+            return [
+                {
+                    "reaction": r.emoji_code,
+                    "count": self._reaction_occurences(r.emoji_code, slice_id),
+                    "reactors": self._reactors_for_slice(r.emoji_code, slice_id)
+                } for r in self._reactions_for_slice(slice_id)
+            ]
 
     def get_user_profile(self, handle) -> User:
         """
@@ -114,7 +120,8 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
             :returns: basic user information
             :rtype: User
         """
-        return self._get_basic_post_author_info(handle)
+        with self.db_connection:
+            return self._get_basic_post_author_info(handle)
 
     def get_user_tasklist(self, handle) -> dict:
         """
@@ -123,10 +130,11 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
             :returns: task information
             :rtype: dict
         """
-        return {
-            "completed": self._get_users_completed_tasks(handle),
-            "available": self._get_users_available_tasks(handle)
-        }
+        with self.db_connection:
+            return {
+                "completed": self._get_users_completed_tasks(handle),
+                "available": self._get_users_available_tasks(handle)
+            }
 
     def _get_basic_post_author_info(self, author_handle: str) -> User:
         query = specific_user(author_handle)
