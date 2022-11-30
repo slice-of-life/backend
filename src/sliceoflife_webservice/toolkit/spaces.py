@@ -41,6 +41,12 @@ class SpaceIndex:
         )
         LOGGER.info("New space index session to %s", self._endpoint)
 
+    def has_active_session(self) -> bool:
+        """
+            Returns true if this space index has an active session, otherwise false
+        """
+        return bool(self._session)
+
     def get_share_link(self, path_to_file: str) -> str:
         """
             get a sharable link to the given file path
