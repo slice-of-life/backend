@@ -6,8 +6,9 @@
 
 import logging
 import os
+from dataclasses import asdict
 
-from . import BaseSliceOfLifeApiResponse
+from . import BaseSliceOfLifeApiResponse, safe_api_callback
 
 from ..dbtools.queries import paginated_posts, specific_user, \
                               specific_task, specific_post, \
@@ -61,6 +62,7 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
                 f"{self.base_url}/api/v1/slices/latest?limit={limit}&offset={offset + len(results)}"
             }
 
+    @safe_api_callback
     def get_slice_by_id(self, slice_id: int) -> Post:
         """
             A GET method that returns the slice corresponding to the given ID, if it exists
@@ -80,7 +82,7 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
             if not isinstance(pinfo.completes, Task):
                 pinfo.completes = self._get_task_info(pinfo.completes)
             pinfo.image = self.cdn_session.get_share_link(pinfo.image)
-            return pinfo
+            return asdict(pinfo)
 
     def get_comments_for_slice(self, slice_id: int) -> dict:
         """

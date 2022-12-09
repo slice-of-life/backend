@@ -45,7 +45,7 @@ def latest_slices():
     """
     limit = int(request.args.get('limit', 20))
     offset = int(request.args.get('offset', 0))
-    LOGGER.info("Responding to GET /api/v1/slices/latest?limit=%d&offset=%d", limit, offset)
+    LOGGER.info("Responding to GET /api/v1/slices/latest")
     return SliceOfLifeApiGetResponse().get_latest_posts(limit, offset)
 
 LOGGER.info("Added the route: GET /api/v1/slices/<:id>")
@@ -54,12 +54,8 @@ def slice_by_id(slice_id: int):
     """
         GET the slice by its ID (post)
     """
-    LOGGER.info("Responding to GET /api/v1/slices/%d", slice_id)
-    try:
-        return asdict(SliceOfLifeApiGetResponse().get_slice_by_id(slice_id))
-    except SliceOfLifeBaseException as exc:
-        LOGGER.error("Error occurred while responding: %s", str(exc))
-        return (f"No such slice: {slice_id}", 404)
+    LOGGER.info("Responding to GET /api/v1/slices/<id>")
+    return SliceOfLifeApiGetResponse().get_slice_by_id(slice_id)
 
 LOGGER.info("Added the route: GET /api/v1/slices/<:id>/comments")
 @app.route('/api/v1/slices/<int:slice_id>/comments', methods=['GET'])
