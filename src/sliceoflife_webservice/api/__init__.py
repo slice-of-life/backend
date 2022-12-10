@@ -47,18 +47,19 @@ class BaseSliceOfLifeApiResponse(ABC):
         LOGGER.debug("Returning shared cdn session")
         return BaseSliceOfLifeApiResponse.blobinstance
 
-def safe_api_callback(method: callable) -> callable:
-    """
-        A decorator that provides error handling for API callbacks
-        :arg method: the API callback to protect
-        :returns: safe API response callback
-        :rtype: callable
-    """
-    def wrapper(ref, *args):
-        try:
-            return method(ref, *args)
-        except SliceOfLifeAPIException as exc:
-            LOGGER.error("Error occurred during execution: %s", str(exc))
-            return ("Internal Server Error", 500)
+    @staticmethod
+    def safe_api_callback(method: callable) -> callable:
+        """
+            A decorator that provides error handling for API callbacks
+            :arg method: the API callback to protect
+            :returns: safe API response callback
+            :rtype: callable
+        """
+        def wrapper(ref, *args):
+            try:
+                return method(ref, *args)
+            except SliceOfLifeAPIException as exc:
+                LOGGER.error("Error occurred during execution: %s", str(exc))
+                return ("Internal Server Error", 500)
 
-    return wrapper
+        return wrapper

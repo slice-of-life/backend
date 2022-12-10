@@ -8,7 +8,7 @@ import logging
 import os
 from dataclasses import asdict
 
-from . import BaseSliceOfLifeApiResponse, safe_api_callback
+from . import BaseSliceOfLifeApiResponse
 
 from ..dbtools.queries import paginated_posts, specific_user, \
                               specific_task, specific_post, \
@@ -62,7 +62,7 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
                 f"{self.base_url}/api/v1/slices/latest?limit={limit}&offset={offset + len(results)}"
             }
 
-    @safe_api_callback
+    @BaseSliceOfLifeApiResponse.safe_api_callback
     def get_slice_by_id(self, slice_id: int) -> Post:
         """
             A GET method that returns the slice corresponding to the given ID, if it exists
