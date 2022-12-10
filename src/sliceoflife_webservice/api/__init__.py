@@ -11,7 +11,7 @@ from dotenv import dotenv_values
 
 from ..dbtools import Instance
 from ..toolkit import SpaceIndex
-from ..exceptions import SliceOfLifeAPIException
+from ..exceptions import SliceOfLifeAPIException, ContentNotFoundError
 
 LOGGER = logging.getLogger("gunicorn.error")
 
@@ -58,6 +58,9 @@ class BaseSliceOfLifeApiResponse(ABC):
         def wrapper(ref, *args):
             try:
                 return method(ref, *args)
+            except ContentNotFoundError as exc:
+                LOGGER.error("Requested content does not exist")
+                return ("The requested resource could not be found", 404)
             except SliceOfLifeAPIException as exc:
                 LOGGER.error("Error occurred during execution: %s", str(exc))
                 return ("Internal Server Error", 500)

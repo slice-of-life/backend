@@ -17,7 +17,7 @@ from ..dbtools.queries import paginated_posts, specific_user, \
                               available_tasks, completed_tasks
 from ..dbtools.schema import interpret_as, Post, User, Task, Comment, Reaction
 
-from ..exceptions import SliceOfLifeAPIException
+from ..exceptions import ContentNotFoundError
 
 LOGGER = logging.getLogger('gunicorn.error')
 
@@ -74,7 +74,7 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
         with self.db_connection:
             result = self.db_connection.query(specific_post(slice_id))
             if len(result) != 1:
-                raise SliceOfLifeAPIException(f"Expected a single result, got {len(result)}")
+                raise ContentNotFoundError(f"Expected a single result, got {len(result)}")
 
             pinfo = interpret_as(Post, result[0]) #should only be one anyway
             if not isinstance(pinfo.posted_by, User):

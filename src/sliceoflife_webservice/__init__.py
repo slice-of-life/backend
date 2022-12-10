@@ -15,9 +15,6 @@ from flask import Flask, request, session
 from .api.get import SliceOfLifeApiGetResponse
 from .api.post import SliceOfLifeApiPostResponse
 
-from .exceptions import SliceOfLifeBaseException, DuplicateHandleError, \
-                        NoSuchUserError, InvalidCredentialsError, NotAuthorizedError
-
 LOGGER = logging.getLogger('gunicorn.error')
 
 load_dotenv()

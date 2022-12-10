@@ -12,7 +12,7 @@ import datetime
 
 from . import BaseSliceOfLifeApiResponse
 from ..exceptions import DuplicateHandleError, NoSuchUserError, \
-                         InvalidCredentialsError, NotAuthorizedError
+                            MismatchedCredentialsError
 from ..dbtools.queries import specific_user, insert_user_account, \
                               insert_post, insert_completion
 from ..dbtools.schema import interpret_as, User, Post, Completion
