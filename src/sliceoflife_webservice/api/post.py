@@ -11,8 +11,7 @@ import secrets
 import datetime
 
 from . import BaseSliceOfLifeApiResponse
-from ..exceptions import DuplicateHandleError, NoSuchUserError, \
-                            MismatchedCredentialsError
+from ..exceptions import AuthorizationError
 from ..dbtools.queries import specific_user, insert_user_account, \
                               insert_post, insert_completion
 from ..dbtools.schema import interpret_as, User, Post, Completion
@@ -27,6 +26,7 @@ class SliceOfLifeApiPostResponse(BaseSliceOfLifeApiResponse):
     def __init__(self, **request_data):
         self._data = request_data
 
+    @BaseSliceOfLifeApiResponse.safe_api_callback
     def create_user(self):
         """
             Creates a new user account for the slice of life application
@@ -35,8 +35,9 @@ class SliceOfLifeApiPostResponse(BaseSliceOfLifeApiResponse):
             if self._handle_is_available():
                 self._make_user_account()
                 return f"CREATED {self._data['handle']}"
-            raise DuplicateHandleError(f"{self._data['handle']} is not available")
+            raise AuthorizationError(f"{self._data['handle']} is not available")
 
+    @BaseSliceOfLifeApiResponse.safe_api_callback
     def authenticate_user(self) -> str:
         """
             Logs the user in. On successful return a auth token to the client
@@ -51,9 +52,9 @@ class SliceOfLifeApiPostResponse(BaseSliceOfLifeApiResponse):
                 )
                 if self._credentials_are_valid(expected_uinfo):
                     return self._generate_auth_token()
-                raise InvalidCredentialsError("Incorrect handle or password")
+                raise AuthorizationError("Incorrect handle or password")
             except IndexError as exc:
-                raise NoSuchUserError(f"No user with handle {self._data['handle']}") from exc
+                raise AuthorizationError(f"No user with handle {self._data['handle']}") from exc
 
     def create_new_post(self) -> dict:
         """

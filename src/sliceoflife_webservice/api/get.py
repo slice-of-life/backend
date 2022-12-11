@@ -27,6 +27,7 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
     """
     base_url = os.getenv('BASE_URL')
 
+    @BaseSliceOfLifeApiResponse.safe_api_callback
     def hello(self) -> dict:
         """
             A simple GET API route that introduces the Slice Of Life API
@@ -38,6 +39,7 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
         }
         return response
 
+    @BaseSliceOfLifeApiResponse.safe_api_callback
     def get_latest_posts(self, limit: int, offset: int) -> dict:
         """
             A GET route that returns the most recently posted slices of life. Pages results
@@ -72,18 +74,15 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
             :throws SliceOfLifeAPIException: when result size is not expected (1 excactly)
         """
         with self.db_connection:
-            result = self.db_connection.query(specific_post(slice_id))
-            if len(result) != 1:
-                raise ContentNotFoundError(f"Expected a single result, got {len(result)}")
-
-            pinfo = interpret_as(Post, result[0]) #should only be one anyway
+            pinfo = self._get_post_information(slice_id)
             if not isinstance(pinfo.posted_by, User):
                 pinfo.posted_by = self._get_basic_post_author_info(pinfo.posted_by)
             if not isinstance(pinfo.completes, Task):
                 pinfo.completes = self._get_task_info(pinfo.completes)
             pinfo.image = self.cdn_session.get_share_link(pinfo.image)
-            return asdict(pinfo)
+            return pinfo
 
+    @BaseSliceOfLifeApiResponse.safe_api_callback
     def get_comments_for_slice(self, slice_id: int) -> dict:
         """
             A Get method that return the comments associated with a given post id, if it exists
@@ -93,10 +92,11 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
             :throws: SliceOfLifeAPIException: the post ID invalid
         """
         with self.db_connection:
-            pinfo = self.get_slice_by_id(slice_id)
+            pinfo = self._get_post_information(slice_id)
 
             return self._build_comment_tree_for_slice(pinfo.post_id)
 
+    @BaseSliceOfLifeApiResponse.safe_api_callback
     def get_reactions_for_slice(self, slice_id: int) -> list:
         """
             A get method that returns the information on the reactions for a given post
@@ -106,7 +106,7 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
             :throws SliceOfLifeAPIException: if the slice does not exist
         """
         with self.db_connection:
-            self.get_slice_by_id(slice_id) # test for existing slice id
+            self._get_post_information(slice_id) # test for existing slice id
             return [
                 {
                     "reaction": r.emoji_code,
@@ -115,6 +115,7 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
                 } for r in self._reactions_for_slice(slice_id)
             ]
 
+    @BaseSliceOfLifeApiResponse.safe_api_callback
     def get_user_profile(self, handle) -> User:
         """
             A get method that returns basic user information. Must be authorized to view
@@ -125,6 +126,7 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
         with self.db_connection:
             return self._get_basic_post_author_info(handle)
 
+    @BaseSliceOfLifeApiResponse.safe_api_callback
     def get_user_tasklist(self, handle) -> dict:
         """
             A get method that a collection of tasks a user has completed and has not completed
@@ -137,6 +139,14 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
                 "completed": self._get_users_completed_tasks(handle),
                 "available": self._get_users_available_tasks(handle)
             }
+
+    def _get_post_information(self, post_id: int) -> Post:
+        result = self.db_connection.query(specific_post(post_id))
+        if len(result) != 1:
+            raise ContentNotFoundError(f"Expected a single result, got {len(result)}")
+
+        return interpret_as(Post, result[0]) # should be one anyway
+
 
     def _get_basic_post_author_info(self, author_handle: str) -> User:
         query = specific_user(author_handle)
