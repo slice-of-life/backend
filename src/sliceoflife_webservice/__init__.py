@@ -60,12 +60,8 @@ def comments_for_slice(slice_id: int):
     """
         GET the comments for a given post
     """
-    LOGGER.info("Responding to GET /api/v1/slices/%d/comments", slice_id)
-    try:
-        return SliceOfLifeApiGetResponse().get_comments_for_slice(slice_id)
-    except SliceOfLifeBaseException as exc:
-        LOGGER.error("Error occured while responding: %s", str(exc))
-        return (f"No such slice: {slice_id}", 404)
+    LOGGER.info("Responding to GET /api/v1/slices/<id>/comments")
+    return SliceOfLifeApiGetResponse().get_comments_for_slice(slice_id)
 
 LOGGER.info("Added the route: GET /api/v1/slices/<:id>/reactions")
 @app.route('/api/v1/slices/<int:slice_id>/reactions', methods=['GET'])
@@ -73,11 +69,8 @@ def reactions_for_slice(slice_id: int):
     """
         GET the reactions for a given post
     """
-    try:
-        return SliceOfLifeApiGetResponse().get_reactions_for_slice(slice_id)
-    except SliceOfLifeBaseException as exc:
-        LOGGER.error("error occured while responding: %s", str(exc))
-        return (f"No such slice: {slice_id}", 404)
+    LOGGER.info("Responding to GET /api/v1/slices/<id>/reactions")
+    return SliceOfLifeApiGetResponse().get_reactions_for_slice(slice_id)
 
 LOGGER.info("Added the route: GET /api/v1/users/<:handle>/profile")
 @app.route('/api/v1/users/<string:handle>/profile', methods=['GET'])
@@ -128,14 +121,7 @@ def create_new_user():
         'first_name': request.form['first_name'],
         'last_name': request.form['last_name'],
     }
-    try:
-        return SliceOfLifeApiPostResponse(**form_data).create_user()
-    except DuplicateHandleError as exc:
-        LOGGER.error("Duplicate handle: %s", str(exc))
-        return ("Handle unavailable", 403)
-    except SliceOfLifeBaseException as exc:
-        LOGGER.error("Exception occurred while responding: %s", str(exc))
-        return (str(exc), 500)
+    return SliceOfLifeApiPostResponse(**form_data).create_user()
 
 LOGGER.info("Added the route: POST /api/v1/users/authenticate")
 @app.route('/api/v1/users/authenticate', methods=['POST'])
