@@ -6,9 +6,10 @@
 
 import logging
 
+from psycopg2 import sql
+
 from .schema import User, Post, Completion
 
-from psycopg2 import sql
 
 LOGGER = logging.getLogger('gunicorn.error')
 
@@ -94,7 +95,7 @@ def top_level_comments(post_id: int) -> sql.SQL:
 
 def comments_responding_to(post_id: int, parent_comment_id: int) -> sql.SQL:
     """
-        SQL query that selects the comments that respond to a particular comment for a particular post
+        SQL query that selects the comments that respond to a parent comment for a particular post
         :arg post_id: the post id to gather comments for
         :arg parent_comment_id: the comment id the gathered comments should have a s parrent
         :returns: A templated SQL statement
