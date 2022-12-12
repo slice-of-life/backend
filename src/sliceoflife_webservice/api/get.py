@@ -6,7 +6,8 @@
 
 import logging
 import os
-from dataclasses import asdict
+
+from flask import session
 
 from . import BaseSliceOfLifeApiResponse
 
@@ -17,7 +18,7 @@ from ..dbtools.queries import paginated_posts, specific_user, \
                               available_tasks, completed_tasks
 from ..dbtools.schema import interpret_as, Post, User, Task, Comment, Reaction
 
-from ..exceptions import ContentNotFoundError
+from ..exceptions import ContentNotFoundError, AuthorizationError
 
 LOGGER = logging.getLogger('gunicorn.error')
 
@@ -124,7 +125,9 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
             :rtype: User
         """
         with self.db_connection:
-            return self._get_basic_post_author_info(handle)
+            if handle in session:
+                return self._get_basic_post_author_info(handle)
+            raise AuthorizationError("Log in to view profile")
 
     @BaseSliceOfLifeApiResponse.safe_api_callback
     def get_user_tasklist(self, handle) -> dict:
@@ -135,10 +138,12 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
             :rtype: dict
         """
         with self.db_connection:
-            return {
-                "completed": self._get_users_completed_tasks(handle),
-                "available": self._get_users_available_tasks(handle)
-            }
+            if handle in session:
+                return {
+                    "completed": self._get_users_completed_tasks(handle),
+                    "available": self._get_users_available_tasks(handle)
+                }
+            raise AuthorizationError("Log in to view task list")
 
     def _get_post_information(self, post_id: int) -> Post:
         result = self.db_connection.query(specific_post(post_id))

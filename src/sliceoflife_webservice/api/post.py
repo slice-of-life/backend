@@ -10,6 +10,8 @@ import hashlib
 import secrets
 import datetime
 
+from flask import session
+
 from . import BaseSliceOfLifeApiResponse
 from ..exceptions import AuthorizationError
 from ..dbtools.queries import specific_user, insert_user_account, \
@@ -38,11 +40,11 @@ class SliceOfLifeApiPostResponse(BaseSliceOfLifeApiResponse):
             raise AuthorizationError(f"{self._data['handle']} is not available")
 
     @BaseSliceOfLifeApiResponse.safe_api_callback
-    def authenticate_user(self) -> str:
+    def authenticate_user(self) -> dict:
         """
             Logs the user in. On successful return a auth token to the client
             :returns: auth token
-            :rtype: str
+            :rtype: dict
         """
         with self.db_connection:
             try:
@@ -51,7 +53,9 @@ class SliceOfLifeApiPostResponse(BaseSliceOfLifeApiResponse):
                     self.db_connection.query(specific_user(self._data['handle']))[0]
                 )
                 if self._credentials_are_valid(expected_uinfo):
-                    return self._generate_auth_token()
+                    auth_token = self._generate_auth_token()
+                    session[self._data['handle']] = auth_token
+                    return {'token': auth_token}
                 raise AuthorizationError("Incorrect handle or password")
             except IndexError as exc:
                 raise AuthorizationError(f"No user with handle {self._data['handle']}") from exc
@@ -66,7 +70,7 @@ class SliceOfLifeApiPostResponse(BaseSliceOfLifeApiResponse):
             if secrets.compare_digest(self._data['token'], self._data['expected']):
                 self._insert_post_record()
                 return "CREATED"
-            raise NotAuthorizedError(f"{self._data['handle']} is not authorized to make a post")
+            raise AuthorizationError(f"{self._data['handle']} is not authorized to make a post")
 
     def _handle_is_available(self) -> bool:
         return not self.db_connection.query(specific_user(self._data['handle']))
