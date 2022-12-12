@@ -10,7 +10,7 @@ import hashlib
 import secrets
 import datetime
 
-from flask import session
+from flask import session, request
 
 from . import BaseSliceOfLifeApiResponse
 from ..exceptions import AuthorizationError
@@ -25,19 +25,23 @@ class SliceOfLifeApiPostResponse(BaseSliceOfLifeApiResponse):
         A subclass of BaseSliceOfLifeApiResponse for specifically responding to POST requests
     """
 
-    def __init__(self, **request_data):
-        self._data = request_data
-
     @BaseSliceOfLifeApiResponse.safe_api_callback
     def create_user(self):
         """
             Creates a new user account for the slice of life application
         """
+        form_data = {
+            'handle': request.form['handle'],
+            'email': request.form['email'],
+            'password': request.form['password'],
+            'first_name': request.form['first_name'],
+            'last_name': request.form['last_name'],
+        }
         with self.db_connection:
-            if self._handle_is_available():
-                self._make_user_account()
-                return f"CREATED {self._data['handle']}"
-            raise AuthorizationError(f"{self._data['handle']} is not available")
+            if self._handle_is_available(form_data['handle']):
+                self._make_user_account(form_data)
+                return f"CREATED {form_data['handle']}"
+            raise AuthorizationError(f"{form_data['handle']} is not available")
 
     @BaseSliceOfLifeApiResponse.safe_api_callback
     def authenticate_user(self) -> dict:
@@ -46,82 +50,93 @@ class SliceOfLifeApiPostResponse(BaseSliceOfLifeApiResponse):
             :returns: auth token
             :rtype: dict
         """
+        form_data = {
+            'handle': request.form['handle'],
+            'password': request.form['password']
+        }
+
         with self.db_connection:
             try:
                 expected_uinfo = interpret_as(
                     User,
-                    self.db_connection.query(specific_user(self._data['handle']))[0]
+                    self.db_connection.query(specific_user(form_data['handle']))[0]
                 )
-                if self._credentials_are_valid(expected_uinfo):
+                if self._credentials_are_valid(form_data, expected_uinfo):
                     auth_token = self._generate_auth_token()
-                    session[self._data['handle']] = auth_token
+                    session[form_data['handle']] = auth_token
                     return {'token': auth_token}
                 raise AuthorizationError("Incorrect handle or password")
             except IndexError as exc:
-                raise AuthorizationError(f"No user with handle {self._data['handle']}") from exc
+                raise AuthorizationError(f"No user with handle {form_data['handle']}") from exc
 
-    def create_new_post(self) -> dict:
+    def create_new_post(self) -> str:
         """
-            Create a new post. On success, return the saved data
-            :returns: post data
-            :rtype: dict
+            Create a new post. On success, return the message "CREATED"
+            :returns: success message
+            :rtype: str
         """
+        post_data = {
+            'author': request.form['handle'],
+            'slice_image': request.files['slice_image'],
+            'free_text': request.form['free_text'],
+            'task_id': request.form['task_id']
+        }
         with self.db_connection:
-            if secrets.compare_digest(self._data['token'], self._data['expected']):
-                self._insert_post_record()
+            if self.has_authorized(post_data['author']):
+                self._insert_post_record(post_data)
                 return "CREATED"
-            raise AuthorizationError(f"{self._data['handle']} is not authorized to make a post")
+            raise AuthorizationError(f"{post_data['author']} is not authorized to make a post")
 
-    def _handle_is_available(self) -> bool:
-        return not self.db_connection.query(specific_user(self._data['handle']))
+    def _handle_is_available(self, handle) -> bool:
+        return not self.db_connection.query(specific_user(handle))
 
-    def _make_user_account(self) -> None:
+    def _make_user_account(self, account_info) -> None:
         user_salt = secrets.token_hex()
-        user_hash = hashlib.sha256(f"{self._data['password']}{user_salt}".encode()).hexdigest()
+        user_hash = hashlib.sha256(f"{account_info['password']}{user_salt}".encode()).hexdigest()
         new_user = User(
-            handle=self._data['handle'],
+            handle=account_info['handle'],
             password_hash=user_hash,
-            email=self._data['email'],
+            email=account_info['email'],
             salt=user_salt,
-            first_name=self._data['first_name'],
-            last_name=self._data['last_name'],
+            first_name=account_info['first_name'],
+            last_name=account_info['last_name'],
             profile_pic='unknown.jpg'
         )
         self.db_connection.query_no_fetch(insert_user_account(new_user))
 
-    def _credentials_are_valid(self, expected: User) -> bool:
+    def _credentials_are_valid(self, given: dict, expected: User) -> bool:
         return secrets.compare_digest(
-            hashlib.sha256(f"{self._data['password']}{expected.salt}".encode()).hexdigest(),
+            hashlib.sha256(f"{given['password']}{expected.salt}".encode()).hexdigest(),
             expected.password_hash
         )
 
     def _generate_auth_token(self) -> str:
         return secrets.token_hex()
 
-    def _insert_post_record(self) -> None:
+    def _insert_post_record(self, post_info) -> None:
         new_post = Post(
             post_id=None,
-            free_text=self._data['free_text'],
-            image=self._save_post_data(),
+            free_text=post_info['free_text'],
+            image=self._save_post_data(post_info),
             created_at=datetime.datetime.utcnow(),
-            posted_by=self._data['handle'],
-            completes=self._data['task_id']
+            posted_by=post_info['author'],
+            completes=post_info['task_id']
         )
 
         new_completion = Completion(
-            completed_by=self._data['handle'],
-            completed_task=self._data['task_id']
+            completed_by=post_info['author'],
+            completed_task=post_info['task_id']
         )
 
         self.db_connection.query_no_fetch(insert_post(new_post))
         self.db_connection.query_no_fetch(insert_completion(new_completion))
 
-    def _save_post_data(self) -> str:
-        file_location = f"posts/{self._data['handle']}" \
-                        + f"/task{self._data['task_id']}" \
-                        + f"{pathlib.Path(self._data['slice_image'].filename).suffix}"
+    def _save_post_data(self, post_data) -> str:
+        file_location = f"posts/{post_data['author']}" \
+                        + f"/task{post_data['task_id']}" \
+                        + f"{pathlib.Path(post_data['slice_image'].filename).suffix}"
         self.cdn_session.save_file(
             file_location,
-            self._data['slice_image']
+            post_data['slice_image']
         )
         return file_location

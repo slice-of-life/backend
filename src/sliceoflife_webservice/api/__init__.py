@@ -5,10 +5,9 @@
 """
 
 import logging
-from abc import ABC
 
 from dotenv import dotenv_values
-from flask import jsonify
+from flask import jsonify, session
 
 from ..dbtools import Instance
 from ..toolkit import SpaceIndex
@@ -17,13 +16,25 @@ from ..exceptions import SliceOfLifeAPIException, ContentNotFoundError, \
 
 LOGGER = logging.getLogger("gunicorn.error")
 
-class BaseSliceOfLifeApiResponse(ABC):
+class BaseSliceOfLifeApiResponse():
     """
         A base class for all slice of life API subclasses
         Has a single db and cdn connection with public references
     """
-    dbinstance: Instance = Instance(**dotenv_values())
-    blobinstance: SpaceIndex = SpaceIndex(**dotenv_values())
+
+    dsn = dotenv_values()
+
+    def __init__(self):
+        self._db = Instance(**self.dsn)
+        self._cdn = SpaceIndex(**self.dsn)
+
+    def has_authorized(self, handle: str) -> bool:
+        """
+            Returns true if the given handle has an active session. False otherwise
+            :arg handle: the handle to check an active session for
+            :rtype: boolean
+        """
+        return handle in session
 
     @property
     def db_connection(self):
@@ -32,8 +43,7 @@ class BaseSliceOfLifeApiResponse(ABC):
             :returns: reference to dbinstance
             :rtype: Instance
         """
-        LOGGER.debug("Returning shared database connection")
-        return BaseSliceOfLifeApiResponse.dbinstance
+        return self._db
 
     @property
     def cdn_session(self):
@@ -42,12 +52,9 @@ class BaseSliceOfLifeApiResponse(ABC):
             :returns: shared cdn session
             :rtype: SpaceIndex
         """
-        if not BaseSliceOfLifeApiResponse.blobinstance.has_active_session():
-            LOGGER.debug("Creating single CDN session")
-            BaseSliceOfLifeApiResponse.blobinstance.create_session()
-
-        LOGGER.debug("Returning shared cdn session")
-        return BaseSliceOfLifeApiResponse.blobinstance
+        if not self._cdn.has_active_session():
+            self._cdn.create_session()
+        return self._cdn
 
     @staticmethod
     def safe_api_callback(method: callable) -> callable:
@@ -69,6 +76,9 @@ class BaseSliceOfLifeApiResponse(ABC):
             except ServiceNotReachable:
                 LOGGER.error("The requested resource timed out")
                 return ("Bad gateway", 504)
+            except (KeyError, IndexError, TypeError, ValueError):
+                LOGGER.error("The request could not be understood")
+                return ("Bad request", 400)
             except SliceOfLifeAPIException as exc:
                 LOGGER.error("Error occurred during execution: %s", str(exc))
                 return ("Internal Server Error", 500)

@@ -7,7 +7,8 @@
 import logging
 import os
 
-from flask import session
+from flask import request
+from dotenv import load_dotenv
 
 from . import BaseSliceOfLifeApiResponse
 
@@ -21,6 +22,8 @@ from ..dbtools.schema import interpret_as, Post, User, Task, Comment, Reaction
 from ..exceptions import ContentNotFoundError, AuthorizationError
 
 LOGGER = logging.getLogger('gunicorn.error')
+
+load_dotenv()
 
 class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
     """
@@ -41,14 +44,14 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
         return response
 
     @BaseSliceOfLifeApiResponse.safe_api_callback
-    def get_latest_posts(self, limit: int, offset: int) -> dict:
+    def get_latest_posts(self) -> dict:
         """
             A GET route that returns the most recently posted slices of life. Pages results
-            :arg limit: the size of the page of results
-            :arg offset: the location where to start the next page of results.
             :returns: a JSON object of posts and their associated information
             :rtype: dict
         """
+        limit = int(request.args.get('limit', 20))
+        offset = int(request.args.get('offset', 0))
         with self.db_connection:
             query = paginated_posts(limit, offset)
             results = self.db_connection.query(query)
@@ -125,7 +128,7 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
             :rtype: User
         """
         with self.db_connection:
-            if handle in session:
+            if self.has_authorized(handle):
                 return self._get_basic_post_author_info(handle)
             raise AuthorizationError("Log in to view profile")
 
@@ -138,7 +141,7 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
             :rtype: dict
         """
         with self.db_connection:
-            if handle in session:
+            if self.has_authorized(handle):
                 return {
                     "completed": self._get_users_completed_tasks(handle),
                     "available": self._get_users_available_tasks(handle)
