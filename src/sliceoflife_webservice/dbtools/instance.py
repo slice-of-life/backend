@@ -11,7 +11,7 @@ import psycopg2
 from psycopg2 import sql
 from psycopg2.extensions import ISOLATION_LEVEL_READ_COMMITTED
 
-from ..exceptions import DatabaseNotConnectedError
+from ..exceptions import ServiceNotReachable
 
 LOGGER = logging.getLogger('gunicorn.error')
 
@@ -49,10 +49,10 @@ class Instance:
             :arg sql: the query to execute
             :returns: query result if successful
             :rtype: psycopg2.extensions.cursor
-            :throws: DatabaseNotConnectedError if no connection is established
+            :throws: ServiceNotReachable if no connection is established
         """
         if not self._connection:
-            raise DatabaseNotConnectedError("No active connection to execute query on")
+            raise ServiceNotReachable("No active connection to execute query on")
 
         with self._connection.cursor() as conn:
             LOGGER.debug("Execute query: %s", query.as_string(self._connection))
@@ -65,10 +65,10 @@ class Instance:
             :arg sql: the query to execute
             :returns: nothing
             :rtype: NoneType
-            :throws: DatabaseNotConnectedError if no connection is established
+            :throws: ServiceNotReachable if no connection is established
         """
         if not self._connection:
-            raise DatabaseNotConnectedError("No active connection ot execute query on")
+            raise ServiceNotReachable("No active connection ot execute query on")
 
         with self._connection.cursor() as conn:
             LOGGER.debug("Execute query: %s", query.as_string(self._connection))

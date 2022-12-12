@@ -10,9 +10,10 @@ import hashlib
 import secrets
 import datetime
 
+from flask import session
+
 from . import BaseSliceOfLifeApiResponse
-from ..exceptions import DuplicateHandleError, NoSuchUserError, \
-                         InvalidCredentialsError, NotAuthorizedError
+from ..exceptions import AuthorizationError
 from ..dbtools.queries import specific_user, insert_user_account, \
                               insert_post, insert_completion
 from ..dbtools.schema import interpret_as, User, Post, Completion
@@ -27,6 +28,7 @@ class SliceOfLifeApiPostResponse(BaseSliceOfLifeApiResponse):
     def __init__(self, **request_data):
         self._data = request_data
 
+    @BaseSliceOfLifeApiResponse.safe_api_callback
     def create_user(self):
         """
             Creates a new user account for the slice of life application
@@ -35,13 +37,14 @@ class SliceOfLifeApiPostResponse(BaseSliceOfLifeApiResponse):
             if self._handle_is_available():
                 self._make_user_account()
                 return f"CREATED {self._data['handle']}"
-            raise DuplicateHandleError(f"{self._data['handle']} is not available")
+            raise AuthorizationError(f"{self._data['handle']} is not available")
 
-    def authenticate_user(self) -> str:
+    @BaseSliceOfLifeApiResponse.safe_api_callback
+    def authenticate_user(self) -> dict:
         """
             Logs the user in. On successful return a auth token to the client
             :returns: auth token
-            :rtype: str
+            :rtype: dict
         """
         with self.db_connection:
             try:
@@ -50,10 +53,12 @@ class SliceOfLifeApiPostResponse(BaseSliceOfLifeApiResponse):
                     self.db_connection.query(specific_user(self._data['handle']))[0]
                 )
                 if self._credentials_are_valid(expected_uinfo):
-                    return self._generate_auth_token()
-                raise InvalidCredentialsError("Incorrect handle or password")
+                    auth_token = self._generate_auth_token()
+                    session[self._data['handle']] = auth_token
+                    return {'token': auth_token}
+                raise AuthorizationError("Incorrect handle or password")
             except IndexError as exc:
-                raise NoSuchUserError(f"No user with handle {self._data['handle']}") from exc
+                raise AuthorizationError(f"No user with handle {self._data['handle']}") from exc
 
     def create_new_post(self) -> dict:
         """
@@ -65,7 +70,7 @@ class SliceOfLifeApiPostResponse(BaseSliceOfLifeApiResponse):
             if secrets.compare_digest(self._data['token'], self._data['expected']):
                 self._insert_post_record()
                 return "CREATED"
-            raise NotAuthorizedError(f"{self._data['handle']} is not authorized to make a post")
+            raise AuthorizationError(f"{self._data['handle']} is not authorized to make a post")
 
     def _handle_is_available(self) -> bool:
         return not self.db_connection.query(specific_user(self._data['handle']))

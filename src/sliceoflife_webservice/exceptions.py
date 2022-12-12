@@ -4,42 +4,37 @@
     :module_author: Nathan Mendoza (nathancm@uci.edu)
 """
 
-class SliceOfLifeBaseException(BaseException):
-    """
-        Base exception class for all Slice Of Life API related exceptions
-    """
-
-class DatabaseNotConnectedError(SliceOfLifeBaseException):
-    """
-        Connection thrown if a sql query is attempted when the API has no active database connection
-    """
-
-class SliceOfLifeAPIException(SliceOfLifeBaseException):
+class SliceOfLifeAPIException(Exception):
     """
         Exception thrown when an API request cannot be completed succesfully
     """
 
-class ContentNotRetrievableError(SliceOfLifeBaseException):
+class ContentNotFoundError(SliceOfLifeAPIException):
     """
-        Exception thrown when the CDN cannot be reached
-    """
-
-class DuplicateHandleError(SliceOfLifeBaseException):
-    """
-        Exception thrown when a user is attempted to be created with a handle already in use
+        Exception thrown when an API request cannot find the data it expects
     """
 
-class NoSuchUserError(SliceOfLifeAPIException):
+class AuthorizationError(SliceOfLifeAPIException):
     """
-        Exception thrown when authentication is attempted with a nonexistent handle
-    """
-
-class InvalidCredentialsError(SliceOfLifeAPIException):
-    """
-        Exception thrown whan authenticating with invalid credentials
+        Exception thrown when an API request fails due to insufficient permissions
     """
 
-class NotAuthorizedError(SliceOfLifeAPIException):
+class DuplicateHandleError(AuthorizationError):
     """
-        Exception thown when a user is not authorized to perform an action
+        Exception thrown when an API request discovers duplicate handles
+    """
+
+class NoSuchUserError(AuthorizationError):
+    """
+        Exception thrwon when an API request cannot verify a user exists
+    """
+
+class MismatchedCredentialsError(AuthorizationError):
+    """
+        Exception thrown when an API request fails to authenticate a user
+    """
+
+class ServiceNotReachable(SliceOfLifeAPIException):
+    """
+        Exception thrown when an API request fails becuase an external service is unreachable
     """

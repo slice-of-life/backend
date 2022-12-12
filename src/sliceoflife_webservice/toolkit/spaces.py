@@ -6,11 +6,10 @@
 
 import logging
 import os
-import pathlib
 
 import boto3
 
-from ..exceptions import ContentNotRetrievableError
+from ..exceptions import ServiceNotReachable
 
 LOGGER = logging.getLogger('gunicorn.error')
 
@@ -53,11 +52,11 @@ class SpaceIndex:
             :arg path_to_file: the file to generate a share link for
             :returns: sharelink
             :rtype: str
-            :throws: ContentNotRetrievableError if no sesssion is active
+            :throws: ServiceNotReachable if no sesssion is active
         """
 
         if not self._session:
-            raise ContentNotRetrievableError("No session exists to interact with application CDN")
+            raise ServiceNotReachable("No session exists to interact with application CDN")
 
         LOGGER.info("Generating share link for file: %s", path_to_file)
         return self._session.generate_presigned_url(
@@ -76,11 +75,11 @@ class SpaceIndex:
             :arg file_to_save: file-like object to save
             :returns: nothing
             :rtype: NoneType
-            :throws: ContentNotRetrievableError if no session is active
+            :throws: ServiceNotReachable if no session is active
         """
 
         if not self._session:
-            raise ContentNotRetrievableError("no session exists to interact with application CDN")
+            raise ServiceNotReachable("no session exists to interact with application CDN")
 
         LOGGER.debug("Received the file: %s", file_to_save.filename)
         LOGGER.debug("Saving the file as: %s", save_as)

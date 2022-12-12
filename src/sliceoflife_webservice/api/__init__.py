@@ -8,9 +8,12 @@ import logging
 from abc import ABC
 
 from dotenv import dotenv_values
+from flask import jsonify
 
 from ..dbtools import Instance
 from ..toolkit import SpaceIndex
+from ..exceptions import SliceOfLifeAPIException, ContentNotFoundError, \
+                         AuthorizationError, ServiceNotReachable
 
 LOGGER = logging.getLogger("gunicorn.error")
 
@@ -45,3 +48,29 @@ class BaseSliceOfLifeApiResponse(ABC):
 
         LOGGER.debug("Returning shared cdn session")
         return BaseSliceOfLifeApiResponse.blobinstance
+
+    @staticmethod
+    def safe_api_callback(method: callable) -> callable:
+        """
+            A decorator that provides error handling for API callbacks
+            :arg method: the API callback to protect
+            :returns: safe API response callback
+            :rtype: callable
+        """
+        def wrapper(ref, *args):
+            try:
+                return jsonify(method(ref, *args))
+            except ContentNotFoundError:
+                LOGGER.error("Requested content does not exist")
+                return ("Not found", 404)
+            except AuthorizationError:
+                LOGGER.error("Insufficient permissions")
+                return ("Not authorized", 401)
+            except ServiceNotReachable:
+                LOGGER.error("The requested resource timed out")
+                return ("Bad gateway", 504)
+            except SliceOfLifeAPIException as exc:
+                LOGGER.error("Error occurred during execution: %s", str(exc))
+                return ("Internal Server Error", 500)
+
+        return wrapper
