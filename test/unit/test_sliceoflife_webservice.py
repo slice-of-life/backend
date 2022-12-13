@@ -1,5 +1,3 @@
-import sliceoflife_webservice
-
 import pytest
 
 
