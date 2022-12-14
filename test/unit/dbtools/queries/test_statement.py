@@ -16,4 +16,4 @@ def test_prepared_statement_creation_without_parmeters():
     """Test prepared statement creation"""
     pstmt = PreparedStatement(sql = 'SELECT 1')
     assert pstmt.statement == 'SELECT 1'
-    assert pstmt.parameters == {}
+    assert not pstmt.parameters
