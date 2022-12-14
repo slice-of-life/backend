@@ -12,6 +12,7 @@ from psycopg2 import sql
 from psycopg2.extensions import ISOLATION_LEVEL_READ_COMMITTED
 
 from ..exceptions import ServiceNotReachable
+from .queries.statement import PreparedStatement
 
 LOGGER = logging.getLogger('gunicorn.error')
 
@@ -43,20 +44,20 @@ class Instance:
                                             )
         self._connection.set_isolation_level(ISOLATION_LEVEL_READ_COMMITTED)
 
-    def query(self, query: sql.SQL) -> psycopg2.extensions.cursor:
+    def query(self, query: PreparedStatement) -> tuple:
         """
             Execute the given sql query and return an iterable containing the results
             :arg sql: the query to execute
             :returns: query result if successful
-            :rtype: psycopg2.extensions.cursor
+            :rtype: tuple
             :throws: ServiceNotReachable if no connection is established
         """
         if not self._connection:
             raise ServiceNotReachable("No active connection to execute query on")
 
         with self._connection.cursor() as conn:
-            LOGGER.debug("Execute query: %s", query.as_string(self._connection))
-            conn.execute(query)
+            LOGGER.debug("Execute query: %s", query.statement.as_string(self._connection))
+            conn.execute(query.statement, query.parameters)
             return conn.fetchall()
 
     def query_no_fetch(self, query: sql.SQL) -> None:
@@ -71,8 +72,8 @@ class Instance:
             raise ServiceNotReachable("No active connection ot execute query on")
 
         with self._connection.cursor() as conn:
-            LOGGER.debug("Execute query: %s", query.as_string(self._connection))
-            conn.execute(query)
+            LOGGER.debug("Execute query: %s", query.statement.as_string(self._connection))
+            conn.execute(query.statement, query.parameters)
 
     def __enter__(self):
         if not self._connection:
