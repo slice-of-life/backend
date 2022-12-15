@@ -48,26 +48,31 @@ def test_top_level_comments_template():
     assert template.parameters == {'postid': 1}
 
 def test_comments_responding_to_template():
+    """Test the comments_responding_to template"""
     template = templates.comments_responding_to(1, 1)
     assert template.statement
     assert template.parameters == {'postid': 1, 'commentid': 1}
 
 def test_reaction_by_groups_template():
+    """Test the reactions_by_group template"""
     template = templates.reactions_by_group(1)
     assert template.statement
     assert template.parameters == {'postid': 1}
 
 def test_reaction_counts_template():
+    """Test the reaction_counts template"""
     template = templates.reaction_counts('code', 1)
     assert template.statement
     assert template.parameters == {'postid': 1, 'code': 'code'}
 
 def test_reactors_by_emoji_template():
+    """Test the reactors_by_emoji template"""
     template = templates.reactors_by_emoji('code', 1)
     assert template.statement
     assert template.parameters == {'postid': 1, 'code': 'code'}
 
 def test_insert_user_account_template():
+    """Test the insert_user_account template"""
     template = templates.insert_user_account(User('handle',
                                                   'pass',
                                                   'email',
@@ -88,6 +93,7 @@ def test_insert_user_account_template():
     }
 
 def test_insert_post_template():
+    """Test the insert_post template"""
     template = templates.insert_post(Post(1,
                                           'freetext',
                                           'post/image.png',
@@ -105,16 +111,19 @@ def test_insert_post_template():
     }
 
 def test_insert_completion_template():
+    """Test the insert_completion template"""
     template = templates.insert_completion(Completion(1, 1))
     assert template.statement
     assert template.parameters == {'user': 1, 'task': 1}
 
 def test_available_tasks_template():
+    """Test the available_tasks template"""
     template = templates.available_tasks('handle')
     assert template.statement
     assert template.parameters == {'handle': 'handle'}
 
 def test_completed_tasks_template():
+    """Test the completed_tasks template"""
     template = templates.completed_tasks('handle')
     assert template.statement
     assert template.parameters == {'handle': 'handle'}
