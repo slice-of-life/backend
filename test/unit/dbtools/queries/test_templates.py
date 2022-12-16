@@ -5,8 +5,6 @@
 """
 
 import datetime
-import pytest
-import psycopg2
 
 import sliceoflife_webservice.dbtools.queries as templates
 from sliceoflife_webservice.dbtools.schema import User, Post, Completion
