@@ -16,17 +16,17 @@ from ..exceptions import SliceOfLifeAPIException, ContentNotFoundError, \
 
 LOGGER = logging.getLogger("gunicorn.error")
 
+DBCONNECTIONS = 10
+
 class BaseSliceOfLifeApiResponse():
     """
         A base class for all slice of life API subclasses
         Has a single db and cdn connection with public references
     """
 
-    dsn = dotenv_values()
-
-    def __init__(self):
-        self._db = Instance(**self.dsn)
-        self._cdn = SpaceIndex(**self.dsn)
+    _env = dotenv_values()
+    _instance = None
+    _space = None
 
     def has_authorized(self, handle: str) -> bool:
         """
@@ -37,24 +37,28 @@ class BaseSliceOfLifeApiResponse():
         return handle in session
 
     @property
-    def db_connection(self):
+    def instance(self):
         """
             returns a reference to the api's shared db connection, creates it if is does not exist
             :returns: reference to dbinstance
             :rtype: Instance
         """
-        return self._db
+        if not self._instance:
+            self._instance = Instance(DBCONNECTIONS, **self._env)
+        return self._instance
 
     @property
-    def cdn_session(self):
+    def spaces(self):
         """
             returns a reference to the api's shared cdn session, creates it if it does not exist
             :returns: shared cdn session
             :rtype: SpaceIndex
         """
-        if not self._cdn.has_active_session():
-            self._cdn.create_session()
-        return self._cdn
+        if not self._space:
+            self._space = SpaceIndex(**self._env)
+            if not self._space.has_active_session():
+                self._space.create_session()
+        return self._space
 
     @staticmethod
     def safe_api_callback(method: callable) -> callable:
