@@ -1,4 +1,4 @@
-name: Package linting and testing
+name: Package linting
 
 on: [push]
 
@@ -24,8 +24,3 @@ jobs:
       - name: Lint with pylint
         run: |
           pylint src/sliceoflife_webservice
-        continue-on-error: false
-      - name: Test with pytest
-        run: |
-          pytest --cov=sliceoflife_webservice --verbose test/
-
