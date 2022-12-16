@@ -4,8 +4,9 @@
     module_author: Nathan Mendoza (nathancm@uci.edu)
 """
 
+from unittest.mock import patch
+
 import pytest
-from botocore.exceptions import EndpointConnectionError
 
 from sliceoflife_webservice.toolkit import SpaceIndex
 from sliceoflife_webservice.exceptions import ServiceNotReachable
@@ -55,5 +56,6 @@ def test_can_save_file_with_active_session(mock_space_config):
     """Test file saving available with active session"""
     msi = SpaceIndex(**mock_space_config)
     msi.create_session()
-    with pytest.raises(EndpointConnectionError):
+    with patch.object(msi._session, 'put_object') as mock_store:
         msi.save_file("postimage_copy.jpeg", open("test/files/postimage.jpeg", 'rb'))
+        assert mock_store.called
