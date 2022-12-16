@@ -5,62 +5,80 @@
 """
 
 import logging
-import os
+import threading
+from dataclasses import dataclass
+from contextlib import contextmanager
 
 import psycopg2
-from psycopg2 import sql
 from psycopg2.extensions import ISOLATION_LEVEL_READ_COMMITTED
 
-from ..exceptions import ServiceNotReachable
+from ..exceptions import SliceOfLifeAPIException, ServiceNotReachable
 from .queries.statement import PreparedStatement
 
 LOGGER = logging.getLogger('gunicorn.error')
 
-class Instance:
+@dataclass
+class ControlledConnection:
+    """
+        Connection wrapper with availability attribute
+    """
+    connection: psycopg2.extensions.connection
+    available: bool
+
+class Instance():
     """
         Object that represents a database instance for the Slice Of Life
     """
 
-    def __init__(self, **config):
-        self._dbname = config.get("DBNAME", os.getenv("DBNAME"))
-        self._dbuser = config.get("DBUSER", os.getenv("DBUSER"))
-        self._dbpass = config.get("DBPASS", os.getenv("DBPASS"))
-        self._dbhost = config.get("DBHOST", os.getenv("DBHOST"))
-        self._dbport = config.get("DBPORT", os.getenv("DBPORT", '5432')) # postgresql default port
-        self._connection = None
+    def __init__(self, pool_size, **config):
+        self._conn_conf = config
+        self._pool = self._make_pool(pool_size)
+        self._pool_lock = threading.Lock()
 
-    def connect(self) -> None:
+    @contextmanager
+    def start_transaction(self) -> psycopg2.extensions.connection:
         """
-            Establish a connection the database specified by **config in __init__
+            Acquire a connection from the pool to be used in a transaction. Release when completed
+            :returns: A secured sql connection from the connection pool
+            :rtype: psycopg2.exceptions.connection
         """
-        if self._connection:
-            return
-        LOGGER.debug("Establishing connection to psql://***@%s:%s", self._dbhost, self._dbport)
-        self._connection = psycopg2.connect(dbname=self._dbname,
-                                            user=self._dbuser,
-                                            password=self._dbpass,
-                                            host=self._dbhost,
-                                            port=self._dbport
-                                            )
-        self._connection.set_isolation_level(ISOLATION_LEVEL_READ_COMMITTED)
+        resource = None
+        try:
+            resource = self._getconn()
+            yield resource
+        except SliceOfLifeAPIException as exc:
+            LOGGER.error("Exception occurred during transaction: %s", str(exc))
+            LOGGER.info("ROLLBACK TRANSACTION")
+            resource.rollback()
+            raise
+        else:
+            LOGGER.info("Transaction executed successfully")
+            LOGGER.info("COMMIT TRANSACTION")
+            resource.commit()
+        finally:
+            if resource:
+                self._putconn(resource)
 
-    def query(self, query: PreparedStatement) -> tuple:
+    @staticmethod
+    def query(conn: psycopg2.extensions.connection, query: PreparedStatement) -> tuple:
         """
-            Execute the given sql query and return an iterable containing the results
+            Execute the given sql query on the given connection and return results as in iterable
+            :arg conn: the connection to execute on
             :arg sql: the query to execute
             :returns: query result if successful
             :rtype: tuple
             :throws: ServiceNotReachable if no connection is established
         """
-        if not self._connection:
+        if not isinstance(conn, psycopg2.extensions.connection):
             raise ServiceNotReachable("No active connection to execute query on")
 
-        with self._connection.cursor() as conn:
-            LOGGER.debug("Execute query: %s", query.statement.as_string(self._connection))
-            conn.execute(query.statement, query.parameters)
-            return conn.fetchall()
+        with conn.cursor() as cur:
+            LOGGER.debug("Execute query: %s", query.statement.as_string(conn))
+            cur.execute(query.statement, query.parameters)
+            return cur.fetchall()
 
-    def query_no_fetch(self, query: sql.SQL) -> None:
+    @staticmethod
+    def query_no_fetch(conn: psycopg2.extensions.connection, query: PreparedStatement):
         """
             Execute the given sql query and return nothing. Useful for insertion or deletion
             :arg sql: the query to execute
@@ -68,24 +86,39 @@ class Instance:
             :rtype: NoneType
             :throws: ServiceNotReachable if no connection is established
         """
-        if not self._connection:
+        if not isinstance(conn, psycopg2.extensions.connection):
             raise ServiceNotReachable("No active connection ot execute query on")
 
-        with self._connection.cursor() as conn:
-            LOGGER.debug("Execute query: %s", query.statement.as_string(self._connection))
-            conn.execute(query.statement, query.parameters)
+        with conn.cursor() as cur:
+            LOGGER.debug("Execute query: %s", query.statement.as_string(conn))
+            cur.execute(query.statement, query.parameters)
 
-    def __enter__(self):
-        if not self._connection:
-            self.connect()
-        LOGGER.debug("BEGIN TRANSACTION")
-        return self
 
-    def __exit__(self, exc_type, exc_value, exc_traceback):
-        if exc_value:
-            self._connection.rollback()
-            LOGGER.debug("Exception occured durring transaction: %s", str(exc_value))
-            LOGGER.debug("TRANSACTION CANCELLED")
-        else:
-            self._connection.commit()
-            LOGGER.debug("TRANSACTION COMMITTED")
+    def _connect(self) -> psycopg2.extensions.connection:
+        LOGGER.debug(
+            "Establishing connection to psql://***@%s:%s",
+            self._conn_conf['dbname'],
+            self._conn_conf['port']
+        )
+        _conn = psycopg2.connect(**self._conn_conf)
+        _conn.set_isolation_level(ISOLATION_LEVEL_READ_COMMITTED)
+        return _conn
+
+    def _make_pool(self, size: int):
+        return [
+            ControlledConnection(self._connect(), True) for _ in range(size)
+        ]
+
+    def _getconn(self):
+        with self._pool_lock:
+            for conn in self._pool:
+                if conn.available:
+                    conn.available = False
+                    return conn.connection
+            raise ServiceNotReachable("No available database connections")
+
+    def _putconn(self, conn: psycopg2.extensions.connection):
+        with self._pool_lock:
+            for _conn in self._pool:
+                if id(_conn.connection) == id(conn):
+                    _conn.available = True
