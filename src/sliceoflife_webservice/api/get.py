@@ -77,13 +77,13 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
             :rtype: Post
             :throws SliceOfLifeAPIException: when result size is not expected (1 excactly)
         """
-        with self.db_connection:
+        with self.instance.start_transaction() as self._conn:
             pinfo = self._get_post_information(slice_id)
             if not isinstance(pinfo.posted_by, User):
                 pinfo.posted_by = self._get_basic_post_author_info(pinfo.posted_by)
             if not isinstance(pinfo.completes, Task):
                 pinfo.completes = self._get_task_info(pinfo.completes)
-            pinfo.image = self.cdn_session.get_share_link(pinfo.image)
+            pinfo.image = self.spaces.get_share_link(pinfo.image)
             return pinfo
 
     @BaseSliceOfLifeApiResponse.safe_api_callback
@@ -95,7 +95,7 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
             :rtype: dict
             :throws: SliceOfLifeAPIException: the post ID invalid
         """
-        with self.db_connection:
+        with self.instance.start_transaction() as self._conn:
             pinfo = self._get_post_information(slice_id)
 
             return self._build_comment_tree_for_slice(pinfo.post_id)
@@ -109,7 +109,7 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
             :rtype list:
             :throws SliceOfLifeAPIException: if the slice does not exist
         """
-        with self.db_connection:
+        with self.instance.start_transaction() as self._conn:
             self._get_post_information(slice_id) # test for existing slice id
             return [
                 {
@@ -127,7 +127,7 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
             :returns: basic user information
             :rtype: User
         """
-        with self.db_connection:
+        with self.instance.start_transaction() as self._conn:
             if self.has_authorized(handle):
                 return self._get_basic_post_author_info(handle)
             raise AuthorizationError("Log in to view profile")
@@ -140,7 +140,7 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
             :returns: task information
             :rtype: dict
         """
-        with self.db_connection:
+        with self.instance.start_transaction() as self._conn:
             if self.has_authorized(handle):
                 return {
                     "completed": self._get_users_completed_tasks(handle),
@@ -149,7 +149,7 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
             raise AuthorizationError("Log in to view task list")
 
     def _get_post_information(self, post_id: int) -> Post:
-        result = self.db_connection.query(specific_post(post_id))
+        result = Instance.query(self._conn, specific_post(post_id))
         if len(result) != 1:
             raise ContentNotFoundError(f"Expected a single result, got {len(result)}")
 
@@ -187,7 +187,7 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
                 {
                     "comment": self._comment_with_author(c),
                     "responses": []
-                } for c in self.db_connection.query(top_level_comments(slice_id))
+                } for c in Instance.query(self._conn, top_level_comments(slice_id))
         ]
 
     def _non_orphaned_comments(self, slice_id: int, parent_comment_id: int) -> list:
@@ -195,7 +195,11 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
             {
                 "comment": self._comment_with_author(c),
                 "responses": []
-            } for c in self.db_connection.query(comments_responding_to(slice_id, parent_comment_id))
+            } for c in Instance.query(self._conn, comments_responding_to(
+                                                        slice_id,
+                                                        parent_comment_id
+                                                    )
+                                    )
         ]
 
     def _get_responses(self, thread, slice_id) -> None:
@@ -213,27 +217,29 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
     def _reactions_for_slice(self, slice_id: int) -> [Reaction]:
         return [
             interpret_as(Reaction, r)
-            for r in self.db_connection.query(
+            for r in Instance.query(
+                self._conn,
                 reactions_by_group(slice_id)
             )
         ]
 
     def _reaction_occurences(self, emoji_used: str, post_id: int) -> int:
-        return self.db_connection.query(reaction_counts(emoji_used, post_id))[0][0]
+        return Instance.query(self._conn, reaction_counts(emoji_used, post_id))[0][0]
 
     def _reactors_for_slice(self, emoji_used: str, post_id: int) -> [str]:
         return [
-            reactor[0] for reactor in self.db_connection.query(
+            reactor[0] for reactor in Instance.query(
+                self._conn,
                 reactors_by_emoji(emoji_used, post_id)
             )
         ]
 
     def _get_users_available_tasks(self, user_handle: str) -> [Task]:
         return [
-            interpret_as(Task, t) for t in self.db_connection.query(available_tasks(user_handle))
+            interpret_as(Task, t) for t in Instance.query(self._conn, available_tasks(user_handle))
         ]
 
     def _get_users_completed_tasks(self, user_handle) -> [Task]:
         return [
-            interpret_as(Task, t) for t in self.db_connection.query(completed_tasks(user_handle))
+            interpret_as(Task, t) for t in Instance.query(self._conn, completed_tasks(user_handle))
         ]
