@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 
 from . import BaseSliceOfLifeApiResponse
 
+from ..dbtools import Instance
 from ..dbtools.queries import paginated_posts, specific_user, \
                               specific_task, specific_post, \
                               top_level_comments, comments_responding_to, \
@@ -52,16 +53,15 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
         """
         limit = int(request.args.get('limit', 20))
         offset = int(request.args.get('offset', 0))
-        with self.db_connection:
-            query = paginated_posts(limit, offset)
-            results = self.db_connection.query(query)
+        with self.instance.start_transaction() as self._conn:
+            results = Instance.query(self._conn, paginated_posts(limit, offset))
             results = [interpret_as(Post, r) for r in results]
             for res in results:
                 if not isinstance(res.posted_by, User):
                     res.posted_by = self._get_basic_post_author_info(res.posted_by)
                 if not isinstance(res.completes, Task):
                     res.completes = self._get_task_info(res.completes)
-                res.image = self.cdn_session.get_share_link(res.image)
+                res.image = self.spaces.get_share_link(res.image)
             return {
                 "page": results,
                 "next":
@@ -157,19 +157,23 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
 
 
     def _get_basic_post_author_info(self, author_handle: str) -> User:
-        query = specific_user(author_handle)
-        uinfo = interpret_as(User, self.db_connection.query(query)[0]) #should only be one anyway
+        uinfo = interpret_as(
+            User,
+            Instance.query(self._conn, specific_user(author_handle))[0]
+        ) #should only be one anyway
         # hide sensitive information
         uinfo.password_hash = "***"
         uinfo.salt = "***"
         uinfo.email = "***"
         # get profile pic
-        uinfo.profile_pic = self.cdn_session.get_share_link(uinfo.profile_pic)
+        uinfo.profile_pic = self.spaces.get_share_link(uinfo.profile_pic)
         return uinfo
 
     def _get_task_info(self, task_id: int) -> Task:
-        query = specific_task(task_id)
-        tinfo = interpret_as(Task, self.db_connection.query(query)[0]) #should only be one anyway
+        tinfo = interpret_as(
+            Task,
+            Instance.query(self._conn, specific_task(task_id))[0]
+        ) #should only be one anyway
         return tinfo
 
     def _build_comment_tree_for_slice(self, slice_id: int) -> dict:
