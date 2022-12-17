@@ -91,7 +91,7 @@ class BaseSliceOfLifeApiResponse():
         """
         def wrapper(ref, *args):
             try:
-                return jsonify(method(ref, *args))
+                return method(ref, *args)
             except ContentNotFoundError as exc:
                 LOGGER.error("Requested content does not exist")
                 LOGGER.error("Error occurred during execution: %s", str(exc))
