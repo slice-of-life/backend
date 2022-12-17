@@ -45,12 +45,14 @@ class Instance():
         resource = None
         try:
             resource = self._getconn()
+            LOGGER.debug("Yielding connection to start transaction")
+            LOGGER.info("BEGIN TRANSACTION")
             yield resource
         except SliceOfLifeAPIException as exc:
             LOGGER.error("Exception occurred during transaction: %s", str(exc))
             LOGGER.info("ROLLBACK TRANSACTION")
             resource.rollback()
-            raise
+            raise # reraise and handle elsewhere
         else:
             LOGGER.info("Transaction executed successfully")
             LOGGER.info("COMMIT TRANSACTION")
@@ -105,6 +107,7 @@ class Instance():
         return _conn
 
     def _make_pool(self, size: int):
+        LOGGER.debug("Making connection pool of size %d", size)
         return [
             ControlledConnection(self._connect(), True) for _ in range(size)
         ]
