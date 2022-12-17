@@ -5,6 +5,7 @@
 """
 
 import logging
+import os
 
 from dotenv import dotenv_values
 from flask import jsonify, session
@@ -63,11 +64,11 @@ class BaseSliceOfLifeApiResponse():
             cls. _instance = Instance(
                 DBCONNECTIONS,
                 **{
-                    'dbname': cls._env['DBNAME'],
-                    'user': cls._env['DBUSER'],
-                    'password': cls._env['DBPASS'],
-                    'host': cls._env['DBHOST'],
-                    'port': cls._env['DBPORT']
+                    'dbname': cls._env.get('DBNAME', os.getenv('DBNAME')),
+                    'user': cls._env.get('DBUSER', os.getenv('DBUSER')),
+                    'password': cls._env.get('DBPASS', os.getenv('DBPASS')),
+                    'host': cls._env.get('DBHOST', os.getenv('DBHOST')),
+                    'port': cls._env.get('DBPORT', os.getenv('DBPORT'))
                 }
             )
         return cls._instance
