@@ -46,18 +46,7 @@ class BaseSliceOfLifeApiResponse():
             :returns: reference to dbinstance
             :rtype: Instance
         """
-        if not self._instance:
-            self._instance = Instance(
-                DBCONNECTIONS,
-                **{
-                    'dbname': self._env['DBNAME'],
-                    'user': self._env['DBUSER'],
-                    'password': self._env['DBPASS'],
-                    'host': self._env['DBHOST'],
-                    'port': self._env['DBPORT']
-                }
-            )
-        return self._instance
+        return self._shared_instance()
 
     @property
     def spaces(self):
@@ -66,11 +55,30 @@ class BaseSliceOfLifeApiResponse():
             :returns: shared cdn session
             :rtype: SpaceIndex
         """
-        if not self._space:
-            self._space = SpaceIndex()
-            if not self._space.has_active_session():
-                self._space.create_session()
-        return self._space
+        return self._shared_space_index()
+
+    @classmethod
+    def _shared_instance(cls):
+        if not cls._instance:
+            cls. _instance = Instance(
+                DBCONNECTIONS,
+                **{
+                    'dbname': cls._env['DBNAME'],
+                    'user': cls._env['DBUSER'],
+                    'password': cls._env['DBPASS'],
+                    'host': cls._env['DBHOST'],
+                    'port': cls._env['DBPORT']
+                }
+            )
+        return cls._instance
+
+    @classmethod
+    def _shared_space_index(cls):
+        if not cls._space:
+            cls._space = SpaceIndex()
+            if not cls._space.has_active_session():
+                cls._space.create_session()
+        return cls._space
 
     @staticmethod
     def safe_api_callback(method: callable) -> callable:
