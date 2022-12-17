@@ -28,6 +28,9 @@ class BaseSliceOfLifeApiResponse():
     _instance = None
     _space = None
 
+    def __init__(self):
+        self._conn = None
+
     def has_authorized(self, handle: str) -> bool:
         """
             Returns true if the given handle has an active session. False otherwise
@@ -44,7 +47,16 @@ class BaseSliceOfLifeApiResponse():
             :rtype: Instance
         """
         if not self._instance:
-            self._instance = Instance(DBCONNECTIONS, **self._env)
+            self._instance = Instance(
+                DBCONNECTIONS,
+                **{
+                    'dbname': self._env['DBNAME'],
+                    'user': self._env['DBUSER'],
+                    'password': self._env['DBPASS'],
+                    'host': self._env['DBHOST'],
+                    'port': self._env['DBPORT']
+                }
+            )
         return self._instance
 
     @property
@@ -55,7 +67,7 @@ class BaseSliceOfLifeApiResponse():
             :rtype: SpaceIndex
         """
         if not self._space:
-            self._space = SpaceIndex(**self._env)
+            self._space = SpaceIndex()
             if not self._space.has_active_session():
                 self._space.create_session()
         return self._space
@@ -71,17 +83,21 @@ class BaseSliceOfLifeApiResponse():
         def wrapper(ref, *args):
             try:
                 return jsonify(method(ref, *args))
-            except ContentNotFoundError:
+            except ContentNotFoundError as exc:
                 LOGGER.error("Requested content does not exist")
+                LOGGER.error("Error occurred during execution: %s", str(exc))
                 return ("Not found", 404)
-            except AuthorizationError:
+            except AuthorizationError as exc:
                 LOGGER.error("Insufficient permissions")
+                LOGGER.error("Error occurred during execution: %s", str(exc))
                 return ("Not authorized", 401)
-            except ServiceNotReachable:
+            except ServiceNotReachable as exc:
                 LOGGER.error("The requested resource timed out")
+                LOGGER.error("Error occurred during execution: %s", str(exc))
                 return ("Bad gateway", 504)
-            except (KeyError, IndexError, TypeError, ValueError):
+            except (KeyError, IndexError, TypeError, ValueError) as exc:
                 LOGGER.error("The request could not be understood")
+                LOGGER.error("Error occurred during execution: %s", str(exc))
                 return ("Bad request", 400)
             except SliceOfLifeAPIException as exc:
                 LOGGER.error("Error occurred during execution: %s", str(exc))
