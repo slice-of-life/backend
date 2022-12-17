@@ -14,6 +14,7 @@ from flask import session, request
 
 from . import BaseSliceOfLifeApiResponse
 from ..exceptions import AuthorizationError
+from ..dbtools import Instance
 from ..dbtools.queries import specific_user, insert_user_account, \
                               insert_post, insert_completion
 from ..dbtools.schema import interpret_as, User, Post, Completion
@@ -37,7 +38,7 @@ class SliceOfLifeApiPostResponse(BaseSliceOfLifeApiResponse):
             'first_name': request.form['first_name'],
             'last_name': request.form['last_name'],
         }
-        with self.db_connection:
+        with self.instance.start_transaction() as self._conn:
             if self._handle_is_available(form_data['handle']):
                 self._make_user_account(form_data)
                 return f"CREATED {form_data['handle']}"
@@ -55,11 +56,11 @@ class SliceOfLifeApiPostResponse(BaseSliceOfLifeApiResponse):
             'password': request.form['password']
         }
 
-        with self.db_connection:
+        with self.instance.start_transaction() as self._conn:
             try:
                 expected_uinfo = interpret_as(
                     User,
-                    self.db_connection.query(specific_user(form_data['handle']))[0]
+                    Instance.query(self._conn, specific_user(form_data['handle']))[0]
                 )
                 if self._credentials_are_valid(form_data, expected_uinfo):
                     auth_token = self._generate_auth_token()
@@ -81,14 +82,14 @@ class SliceOfLifeApiPostResponse(BaseSliceOfLifeApiResponse):
             'free_text': request.form['free_text'],
             'task_id': request.form['task_id']
         }
-        with self.db_connection:
+        with self.instance.start_transaction() as self._conn:
             if self.has_authorized(post_data['author']):
                 self._insert_post_record(post_data)
                 return "CREATED"
             raise AuthorizationError(f"{post_data['author']} is not authorized to make a post")
 
     def _handle_is_available(self, handle) -> bool:
-        return not self.db_connection.query(specific_user(handle))
+        return not Instance.query(self._conn, specific_user(handle))
 
     def _make_user_account(self, account_info) -> None:
         user_salt = secrets.token_hex()
@@ -102,7 +103,7 @@ class SliceOfLifeApiPostResponse(BaseSliceOfLifeApiResponse):
             last_name=account_info['last_name'],
             profile_pic='unknown.jpg'
         )
-        self.db_connection.query_no_fetch(insert_user_account(new_user))
+        Instance.query_no_fetch(self._conn, insert_user_account(new_user))
 
     def _credentials_are_valid(self, given: dict, expected: User) -> bool:
         return secrets.compare_digest(
@@ -128,14 +129,14 @@ class SliceOfLifeApiPostResponse(BaseSliceOfLifeApiResponse):
             completed_task=post_info['task_id']
         )
 
-        self.db_connection.query_no_fetch(insert_post(new_post))
-        self.db_connection.query_no_fetch(insert_completion(new_completion))
+        Instance.query_no_fetch(self._conn, insert_post(new_post))
+        Instance.query_no_fetch(self._conn, insert_completion(new_completion))
 
     def _save_post_data(self, post_data) -> str:
         file_location = f"posts/{post_data['author']}" \
                         + f"/task{post_data['task_id']}" \
                         + f"{pathlib.Path(post_data['slice_image'].filename).suffix}"
-        self.cdn_session.save_file(
+        self.spaces.save_file(
             file_location,
             post_data['slice_image']
         )
