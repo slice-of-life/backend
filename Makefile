@@ -47,6 +47,7 @@ lint:
 bootstrap: venv
 	@( \
 		source .venv/bin/activate; \
+		pip install --upgrade pip; \
 		pip3 install --require-virtualenv -r requirements.txt; \
 		pip3 install --editable . ; \
 	)

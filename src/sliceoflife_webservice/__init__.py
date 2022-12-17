@@ -31,7 +31,6 @@ def greeting():
        The first API method of the Slice Of Life API
     """
     LOGGER.info("Responding to GET /api/v1/greeting")
-
     return SliceOfLifeApiGetResponse().hello()
 
 LOGGER.info("Added the route: GET /api/v1/slices/latest")
@@ -40,10 +39,8 @@ def latest_slices():
     """
         GET the most recent slices of life (posts)
     """
-    limit = int(request.args.get('limit', 20))
-    offset = int(request.args.get('offset', 0))
     LOGGER.info("Responding to GET /api/v1/slices/latest")
-    return SliceOfLifeApiGetResponse().get_latest_posts(limit, offset)
+    return SliceOfLifeApiGetResponse().get_latest_posts()
 
 LOGGER.info("Added the route: GET /api/v1/slices/<:id>")
 @app.route('/api/v1/slices/<int:slice_id>', methods=['GET'])
@@ -78,6 +75,7 @@ def user_profile_information(handle: str):
     """
         GET the basic profile information for a given user handle
     """
+    LOGGER.info("Responding to GET /api/v1/users/<handle>/profile")
     return SliceOfLifeApiGetResponse().get_user_profile(handle)
 
 LOGGER.info("Added the route: GET /api/v1/users/<:handle>/tasklist")
@@ -86,6 +84,7 @@ def user_task_list(handle: str):
     """
         GET the task list for the given user
     """
+    LOGGER.info("Responding to GET /api/v1/users/<handle>/tasklist")
     return SliceOfLifeApiGetResponse().get_user_tasklist(handle)
 
 LOGGER.info("Added the route: POST /api/v1/users/account/new")
@@ -94,15 +93,8 @@ def create_new_user():
     """
         Create a new slice of life user account. Only basic information required to get started
     """
-    form_data = {
-        'handle': request.form['handle'],
-        'email': request.form['email'],
-        'password': request.form['password'],
-        'first_name': request.form['first_name'],
-        'last_name': request.form['last_name'],
-    }
-    LOGGER.info("Respoding to api/v1/users/account/new")
-    return SliceOfLifeApiPostResponse(**form_data).create_user()
+    LOGGER.info("Responding to POST /api/v1/users/account/new")
+    return SliceOfLifeApiPostResponse().create_user()
 
 LOGGER.info("Added the route: POST /api/v1/users/authenticate")
 @app.route('/api/v1/users/authenticate', methods=['POST'])
@@ -110,11 +102,8 @@ def authenticate_user():
     """
         Authenticate the user. Gives the client an auth token if successful that can be used later
     """
-    form_data = {
-        'handle': request.form['handle'],
-        'password': request.form['password']
-    }
-    return SliceOfLifeApiPostResponse(**form_data).authenticate_user()
+    LOGGER.info("Responding to POST /api/v1/users/authenticate")
+    return SliceOfLifeApiPostResponse().authenticate_user()
 
 LOGGER.info("Added the route: POST /api/v1/slices/new")
 @app.route('/api/v1/slices/new', methods=['POST'])
@@ -123,14 +112,5 @@ def new_post():
         Create a new post, if the user is authenicated
 
     """
-    auth_data = {
-        'handle': request.form['handle'],
-        'token': request.form['token'],
-        'expected': session[request.form['handle']] or ''
-    }
-    slice_content = {
-        'slice_image': request.files['slice_image'],
-        'free_text': request.form['free_text'],
-        'task_id': request.form['task_id']
-    }
-    return SliceOfLifeApiPostResponse(**auth_data, **slice_content).create_new_post()
+    LOGGER.info("Responding to POST /api/v1/slices/new")
+    return SliceOfLifeApiPostResponse().create_new_post()

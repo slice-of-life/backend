@@ -81,8 +81,6 @@ class SpaceIndex:
         if not self._session:
             raise ServiceNotReachable("no session exists to interact with application CDN")
 
-        LOGGER.debug("Received the file: %s", file_to_save.filename)
-        LOGGER.debug("Saving the file as: %s", save_as)
         self._session.put_object(
             Bucket=self.SPACES_BUCKET,
             Key=save_as,
