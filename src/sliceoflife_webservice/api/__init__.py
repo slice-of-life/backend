@@ -8,7 +8,7 @@ import logging
 import os
 
 from dotenv import dotenv_values
-from flask import jsonify, session
+from flask import jsonify, session, make_response
 
 from ..dbtools import Instance
 from ..toolkit import SpaceIndex
@@ -91,7 +91,9 @@ class BaseSliceOfLifeApiResponse():
         """
         def wrapper(ref, *args):
             try:
-                return jsonify(method(ref, *args))
+                response = make_response(method(ref, *args), 200)
+                response.headers.add('Access-Control-Allow-Origin', 'true')
+                return response
             except ContentNotFoundError as exc:
                 LOGGER.error("Requested content does not exist")
                 LOGGER.error("Error occurred during execution: %s", str(exc))
