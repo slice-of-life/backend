@@ -10,7 +10,7 @@ import hashlib
 import secrets
 import datetime
 
-from flask import session, request
+from flask import request
 
 from . import BaseSliceOfLifeApiResponse
 from ..exceptions import AuthorizationError
@@ -64,7 +64,8 @@ class SliceOfLifeApiPostResponse(BaseSliceOfLifeApiResponse):
                 )
                 if self._credentials_are_valid(form_data, expected_uinfo):
                     auth_token = self._generate_auth_token()
-                    session[form_data['handle']] = auth_token
+                    self._authorized[form_data['handle']] = auth_token
+                    LOGGER.debug("%s", str(self._authorized))
                     return {'token': auth_token}
                 raise AuthorizationError("Incorrect handle or password")
             except IndexError as exc:
