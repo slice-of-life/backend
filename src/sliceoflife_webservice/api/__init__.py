@@ -91,7 +91,7 @@ class BaseSliceOfLifeApiResponse():
         """
         def wrapper(ref, *args):
             try:
-                response = make_response(method(ref, *args), 200)
+                response = make_response(jsonify(method(ref, *args)), 200)
                 response.headers.add('Access-Control-Allow-Origin', 'true')
                 return response
             except ContentNotFoundError as exc:
