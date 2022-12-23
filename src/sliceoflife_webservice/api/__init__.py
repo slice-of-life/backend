@@ -8,7 +8,7 @@ import logging
 import os
 
 from dotenv import dotenv_values
-from flask import jsonify, session, make_response
+from flask import jsonify, session, make_response, request
 
 from ..dbtools import Instance
 from ..toolkit import SpaceIndex
@@ -21,13 +21,14 @@ DBCONNECTIONS = 10
 
 class BaseSliceOfLifeApiResponse():
     """
-        A base class for all slice of life API subclasses
+    A base class for all slice of life API subclasses
         Has a single db and cdn connection with public references
     """
 
     _env = dotenv_values()
     _instance = None
     _space = None
+    _authorized = {}
 
     def __init__(self):
         self._conn = None
@@ -38,7 +39,8 @@ class BaseSliceOfLifeApiResponse():
             :arg handle: the handle to check an active session for
             :rtype: boolean
         """
-        return handle in session
+        LOGGER.debug("%s", str(self._authorized))
+        return handle in self._authorized
 
     @property
     def instance(self):
@@ -91,8 +93,9 @@ class BaseSliceOfLifeApiResponse():
         """
         def wrapper(ref, *args):
             try:
+                LOGGER.info("Request from %s", str(request.headers.get('Origin')))
                 response = make_response(jsonify(method(ref, *args)), 200)
-                response.headers.add('Access-Control-Allow-Origin', 'true')
+                response.headers.add('Access-Control-Allow-Origin', '*')
                 return response
             except ContentNotFoundError as exc:
                 LOGGER.error("Requested content does not exist")
