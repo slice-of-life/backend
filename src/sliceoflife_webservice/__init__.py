@@ -10,7 +10,7 @@ from dataclasses import asdict
 from secrets import compare_digest
 
 from dotenv import load_dotenv
-from flask import Flask, request, session
+from flask import Flask, request
 
 from .api.get import SliceOfLifeApiGetResponse
 from .api.post import SliceOfLifeApiPostResponse
@@ -20,7 +20,6 @@ LOGGER = logging.getLogger('gunicorn.error')
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.getenv('APP_SESSION_KEY')
 
 LOGGER.info("Created an API application instance")
 
