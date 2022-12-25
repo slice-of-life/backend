@@ -139,21 +139,21 @@ class BaseSliceOfLifeApiResponse():
             except ContentNotFoundError as exc:
                 LOGGER.error("Requested content does not exist")
                 LOGGER.error("Error occurred during execution: %s", str(exc))
-                return ("Not found", 404)
+                return make_response("Not found", 404)
             except AuthorizationError as exc:
                 LOGGER.error("Insufficient permissions")
                 LOGGER.error("Error occurred during execution: %s", str(exc))
-                return ("Not authorized", 401)
+                return make_response("Not authorized", 401)
             except ServiceNotReachable as exc:
                 LOGGER.error("The requested resource timed out")
                 LOGGER.error("Error occurred during execution: %s", str(exc))
-                return ("Bad gateway", 504)
+                return make_response("Bad gateway", 504)
             except (KeyError, IndexError) as exc:
                 LOGGER.error("The request could not be understood")
                 LOGGER.error("Error occurred during execution: %s", str(exc))
-                return ("Bad request", 400)
+                return make_response("Bad request", 400)
             except SliceOfLifeAPIException as exc:
                 LOGGER.error("Error occurred during execution: %s", str(exc))
-                return ("Internal Server Error", 500)
+                return make_response("Internal server error", 500)
 
         return wrapper
