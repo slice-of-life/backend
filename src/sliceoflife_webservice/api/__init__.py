@@ -68,14 +68,9 @@ class BaseSliceOfLifeApiResponse():
             claims = jwt.decode(token,
                                 self._auth_secret_key,
                                 algorithms=self._jwt_algoritm,
-                                require=['handle', 'exp', 'nbf']
                                 )
             LOGGER.debug("Token formatted is valid. Verifying owernship")
             return claims['handle'] == token_for
-        except jwt.exceptions.MissingRequiredClaimError as exc:
-            LOGGER.debug("Token is missformated")
-            LOGGER.error("Claim missing from token: %s", str(exc))
-            return False
         except (jwt.exceptions.ImmatureSignatureError, jwt.exceptions.ExpiredSignatureError) as exc:
             LOGGER.debug("Token is not valid")
             LOGGER.error("Claim immature or expired %s", str(exc))
