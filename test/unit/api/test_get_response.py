@@ -57,17 +57,17 @@ def test_greeting_response():
             'utf-8')
         assert SliceOfLifeApiGetResponse().hello().status == '200 OK'
 
-@pytest.mark.parametrize('limit, offset', [
-    (4, 0),
-    (2, 0),
-    (2, 1),
-    (2, 2),
-    (4, 4)
+@pytest.mark.parametrize('limit, offset, result', [
+    (4, 0, b'{"next":"http://127.0.0.1:8000/api/v1/slices/latest?limit=4&offset=4","page":[{"completes":{"active":true,"description":"task2 description","task_id":2,"title":"task2"},"created_at":"Thu, 15 Dec 2022 00:00:00 GMT","free_text":"post text 1","image":"post pic 1","post_id":1,"posted_by":{"email":"***","first_name":"user1first","handle":"user1","last_name":"user1last","password_hash":"***","profile_pic":"user1.png","salt":"***"}},{"completes":{"active":true,"description":"task3 description","task_id":3,"title":"task3"},"created_at":"Thu, 08 Dec 2022 00:00:00 GMT","free_text":"post text 2","image":"post pic 2","post_id":2,"posted_by":{"email":"***","first_name":"user1first","handle":"user1","last_name":"user1last","password_hash":"***","profile_pic":"user1.png","salt":"***"}},{"completes":{"active":true,"description":"task2 description","task_id":2,"title":"task2"},"created_at":"Tue, 29 Nov 2022 00:00:00 GMT","free_text":"post text 3","image":"post pic 3","post_id":3,"posted_by":{"email":"***","first_name":"user2first","handle":"user2","last_name":"user2last","password_hash":"***","profile_pic":"user2.png","salt":"***"}},{"completes":{"active":true,"description":"task1 description","task_id":1,"title":"task1"},"created_at":"Sat, 19 Nov 2022 00:00:00 GMT","free_text":"post text 4","image":"post pic 4","post_id":4,"posted_by":{"email":"***","first_name":"user2first","handle":"user2","last_name":"user2last","password_hash":"***","profile_pic":"user2.png","salt":"***"}}]}\n'),
+    (2, 0, b'{"next":"http://127.0.0.1:8000/api/v1/slices/latest?limit=2&offset=2","page":[{"completes":{"active":true,"description":"task2 description","task_id":2,"title":"task2"},"created_at":"Thu, 15 Dec 2022 00:00:00 GMT","free_text":"post text 1","image":"post pic 1","post_id":1,"posted_by":{"email":"***","first_name":"user1first","handle":"user1","last_name":"user1last","password_hash":"***","profile_pic":"user1.png","salt":"***"}},{"completes":{"active":true,"description":"task3 description","task_id":3,"title":"task3"},"created_at":"Thu, 08 Dec 2022 00:00:00 GMT","free_text":"post text 2","image":"post pic 2","post_id":2,"posted_by":{"email":"***","first_name":"user1first","handle":"user1","last_name":"user1last","password_hash":"***","profile_pic":"user1.png","salt":"***"}}]}\n'),
+    (2, 1, b'{"next":"http://127.0.0.1:8000/api/v1/slices/latest?limit=2&offset=3","page":[{"completes":{"active":true,"description":"task3 description","task_id":3,"title":"task3"},"created_at":"Thu, 08 Dec 2022 00:00:00 GMT","free_text":"post text 2","image":"post pic 2","post_id":2,"posted_by":{"email":"***","first_name":"user1first","handle":"user1","last_name":"user1last","password_hash":"***","profile_pic":"user1.png","salt":"***"}},{"completes":{"active":true,"description":"task2 description","task_id":2,"title":"task2"},"created_at":"Tue, 29 Nov 2022 00:00:00 GMT","free_text":"post text 3","image":"post pic 3","post_id":3,"posted_by":{"email":"***","first_name":"user2first","handle":"user2","last_name":"user2last","password_hash":"***","profile_pic":"user2.png","salt":"***"}}]}\n'),
+    (2, 2, b'{"next":"http://127.0.0.1:8000/api/v1/slices/latest?limit=2&offset=4","page":[{"completes":{"active":true,"description":"task2 description","task_id":2,"title":"task2"},"created_at":"Tue, 29 Nov 2022 00:00:00 GMT","free_text":"post text 3","image":"post pic 3","post_id":3,"posted_by":{"email":"***","first_name":"user2first","handle":"user2","last_name":"user2last","password_hash":"***","profile_pic":"user2.png","salt":"***"}},{"completes":{"active":true,"description":"task1 description","task_id":1,"title":"task1"},"created_at":"Sat, 19 Nov 2022 00:00:00 GMT","free_text":"post text 4","image":"post pic 4","post_id":4,"posted_by":{"email":"***","first_name":"user2first","handle":"user2","last_name":"user2last","password_hash":"***","profile_pic":"user2.png","salt":"***"}}]}\n'),
+    (4, 4, b'{"next":"http://127.0.0.1:8000/api/v1/slices/latest?limit=4&offset=4","page":[]}\n')
 ])
-def test_latest_posts_response(limit, offset):
+def test_latest_posts_response(limit, offset, result):
     with app.test_request_context(f'/slices/latest?limit={limit}&offset={offset}', method='GET'):
         with patch.object(Instance, 'query') as mock_query:
             with patch.object(SpaceIndex, 'get_share_link') as mock_share:
                 mock_query.side_effect = lookup_db
                 mock_share.side_effect = lambda x: x
-                assert SliceOfLifeApiGetResponse().get_latest_posts()
+                assert SliceOfLifeApiGetResponse().get_latest_posts().get_data() == result
