@@ -30,7 +30,7 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
     """
         A subclass of SliceOfLifeApiResponse for specifically responding to GET request
     """
-    base_url = os.getenv('BASE_URL')
+    base_url = os.getenv('BASE_URL', 'http://127.0.0.1:8000')
 
     @BaseSliceOfLifeApiResponse.safe_api_callback
     def hello(self) -> dict:
