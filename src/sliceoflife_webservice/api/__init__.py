@@ -31,7 +31,7 @@ class BaseSliceOfLifeApiResponse():
 
     _instance = None
     _space = None
-    _auth_secret_key = os.getenv('APP_AUTH_KEY')
+    _auth_secret_key = os.getenv('APP_AUTH_KEY', 'testing_key_DONOTUSE')
     _jwt_algoritm="HS256"
 
     def __init__(self):
