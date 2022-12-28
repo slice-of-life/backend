@@ -6,7 +6,6 @@ freezegun
 
 # project dependencies
 Flask
-flask-cors
 gunicorn
 psycopg2
 requests
