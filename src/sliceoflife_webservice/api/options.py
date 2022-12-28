@@ -4,8 +4,8 @@
     :module_author: Nathan Mendoza (nathancm@uci.edu)
 """
 
+from flask import make_response
 from . import BaseSliceOfLifeApiResponse
-from flask import request, make_response
 
 class SliceOfLifeApiOptionsResponse(BaseSliceOfLifeApiResponse):
     """
