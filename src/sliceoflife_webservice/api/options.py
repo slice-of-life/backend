@@ -22,3 +22,4 @@ class SliceOfLifeApiOptionsResponse(BaseSliceOfLifeApiResponse):
         response.headers.set('Access-Control-Allow-Origin', '*')
         response.headers.set('Access-Control-Allow-Methods', 'POST, GET')
         response.headers.set('Access-Control-Allow-Headers', 'x-auth-token')
+        return response
