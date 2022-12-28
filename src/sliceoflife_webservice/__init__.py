@@ -11,6 +11,7 @@ from secrets import compare_digest
 
 from dotenv import load_dotenv
 from flask import Flask, request
+from flask_cors import CORS
 
 from .api.get import SliceOfLifeApiGetResponse
 from .api.post import SliceOfLifeApiPostResponse
@@ -20,6 +21,7 @@ LOGGER = logging.getLogger('gunicorn.error')
 load_dotenv()
 
 app = Flask(__name__)
+CORS(app)
 
 LOGGER.info("Created an API application instance")
 
