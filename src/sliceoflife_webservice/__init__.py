@@ -11,19 +11,27 @@ from secrets import compare_digest
 
 from dotenv import load_dotenv
 from flask import Flask, request
-from flask_cors import CORS
 
 from .api.get import SliceOfLifeApiGetResponse
 from .api.post import SliceOfLifeApiPostResponse
+from .api.options import SliceOfLifeApiOptionsResponse
 
 LOGGER = logging.getLogger('gunicorn.error')
 
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
 
 LOGGER.info("Created an API application instance")
+
+LOGGER.info("Added the preflight response handler")
+@app.route('/<path:path>', methods=['OPTIONS'])
+def preflight_handler(path):
+    """
+        This response to preflight requests
+    """
+    LOGGER.info("Responding to OPTIONS /%s", path)
+    return SliceOfLifeApiOptionsResponse().preflight_request()
 
 LOGGER.info("Added the route: GET /api/v1/greeting")
 @app.route('/api/v1/greeting', methods=['GET'])
