@@ -24,15 +24,6 @@ app = Flask(__name__)
 
 LOGGER.info("Created an API application instance")
 
-LOGGER.info("Added the preflight response handler")
-@app.route('/<path:path>', methods=['OPTIONS'])
-def preflight_handler(path):
-    """
-        This response to preflight requests
-    """
-    LOGGER.info("Responding to OPTIONS /%s", path)
-    return SliceOfLifeApiOptionsResponse().preflight_request()
-
 LOGGER.info("Added the route: GET /api/v1/greeting")
 @app.route('/api/v1/greeting', methods=['GET'])
 def greeting():
@@ -79,11 +70,14 @@ def reactions_for_slice(slice_id: int):
     return SliceOfLifeApiGetResponse().get_reactions_for_slice(slice_id)
 
 LOGGER.info("Added the route: GET /api/v1/users/<:handle>/profile")
-@app.route('/api/v1/users/<string:handle>/profile', methods=['GET'])
+@app.route('/api/v1/users/<string:handle>/profile', methods=['GET', 'OPTIONS'])
 def user_profile_information(handle: str):
     """
         GET the basic profile information for a given user handle
     """
+    if request.method == 'OPTIONS':
+        LOGGER.info("Responding to OPTIONS /api/v1/users/<handle>/profile")
+        return SliceOfLifeApiOptionsResponse().preflight_request()
     LOGGER.info("Responding to GET /api/v1/users/<handle>/profile")
     return SliceOfLifeApiGetResponse().get_user_profile(handle)
 
