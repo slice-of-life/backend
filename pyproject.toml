@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sliceoflife_backend"
-version = "0.1.4"
+version = "0.1.5"
 description = "Backend logic for slice of life web application"
 readme = "README.md"
 requires-python = ">=3.10"
