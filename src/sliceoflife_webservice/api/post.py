@@ -62,14 +62,12 @@ class SliceOfLifeApiPostResponse(BaseSliceOfLifeApiResponse):
                     User,
                     Instance.query(self._conn, specific_user(form_data['handle']))[0]
                 )
-                if self._credentials_are_valid(form_data, expected_uinfo):
-                    auth_token = self._generate_auth_token()
-                    self._authorized[form_data['handle']] = auth_token
-                    LOGGER.debug("%s", str(self._authorized))
-                    return {'token': auth_token}
-                raise AuthorizationError("Incorrect handle or password")
             except IndexError as exc:
                 raise AuthorizationError(f"No user with handle {form_data['handle']}") from exc
+            else:
+                if self._credentials_are_valid(form_data, expected_uinfo):
+                    return {'token': self.create_auth_token(form_data['handle'])}
+                raise AuthorizationError("Incorrect handle or password")
 
     def create_new_post(self) -> str:
         """
@@ -84,7 +82,7 @@ class SliceOfLifeApiPostResponse(BaseSliceOfLifeApiResponse):
             'task_id': request.form['task_id']
         }
         with self.instance.start_transaction() as self._conn:
-            if self.has_authorized(post_data['author']):
+            if self.verify_auth_token(post_data['author']):
                 self._insert_post_record(post_data)
                 return "CREATED"
             raise AuthorizationError(f"{post_data['author']} is not authorized to make a post")
@@ -111,9 +109,6 @@ class SliceOfLifeApiPostResponse(BaseSliceOfLifeApiResponse):
             hashlib.sha256(f"{given['password']}{expected.salt}".encode()).hexdigest(),
             expected.password_hash
         )
-
-    def _generate_auth_token(self) -> str:
-        return secrets.token_hex()
 
     def _insert_post_record(self, post_info) -> None:
         new_post = Post(

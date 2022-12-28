@@ -6,9 +6,11 @@
 
 import logging
 import os
+import datetime
 
-from dotenv import dotenv_values
-from flask import jsonify, session, make_response, request
+import jwt
+from dotenv import load_dotenv
+from flask import jsonify, make_response, request
 
 from ..dbtools import Instance
 from ..toolkit import SpaceIndex
@@ -19,28 +21,60 @@ LOGGER = logging.getLogger("gunicorn.error")
 
 DBCONNECTIONS = 10
 
+load_dotenv()
+
 class BaseSliceOfLifeApiResponse():
     """
     A base class for all slice of life API subclasses
         Has a single db and cdn connection with public references
     """
 
-    _env = dotenv_values()
     _instance = None
     _space = None
-    _authorized = {}
+    _auth_secret_key = os.getenv('APP_AUTH_KEY', 'testing_key_DONOTUSE')
+    _jwt_algoritm="HS256"
 
     def __init__(self):
         self._conn = None
 
-    def has_authorized(self, handle: str) -> bool:
+    def create_auth_token(self, token_for: str) -> str:
         """
-            Returns true if the given handle has an active session. False otherwise
-            :arg handle: the handle to check an active session for
+           Generate a new JWT for the given user handle
+           :arg token_for: handle this JWT is for
+           :returns: an encoded JWT
+           :rtype: str
+        """
+        claims = {
+            'handle': token_for,
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(days=7),
+            'nbf': datetime.datetime.utcnow() + datetime.timedelta(seconds=2),
+        }
+        LOGGER.debug("Generate JWT token for %s", token_for)
+        return jwt.encode(claims, self._auth_secret_key, algorithm=self._jwt_algoritm)
+
+
+    def verify_auth_token(self, token_for: str) -> bool:
+        """
+            Returns true if the given handle has a valid token. False otherwise
+            :arg token: the token with the encoded authorization claims
+            :arg token_for: the handle that claims ownership of the token
             :rtype: boolean
+            :throws AuthorizationError: if no auth token is found in the request headers
         """
-        LOGGER.debug("%s", str(self._authorized))
-        return handle in self._authorized
+        try:
+            token = request.headers.get('x-auth-token')
+            if not token:
+                raise AuthorizationError('Missing authentication token in request headers')
+            claims = jwt.decode(token,
+                                self._auth_secret_key,
+                                algorithms=self._jwt_algoritm,
+                                )
+            LOGGER.debug("Token formatted is valid. Verifying owernship")
+            return claims['handle'] == token_for
+        except (jwt.exceptions.ImmatureSignatureError, jwt.exceptions.ExpiredSignatureError) as exc:
+            LOGGER.debug("Token is not valid")
+            LOGGER.error("Claim immature or expired %s", str(exc))
+            return False
 
     @property
     def instance(self):
@@ -66,11 +100,11 @@ class BaseSliceOfLifeApiResponse():
             cls. _instance = Instance(
                 DBCONNECTIONS,
                 **{
-                    'dbname': cls._env.get('DBNAME', os.getenv('DBNAME')),
-                    'user': cls._env.get('DBUSER', os.getenv('DBUSER')),
-                    'password': cls._env.get('DBPASS', os.getenv('DBPASS')),
-                    'host': cls._env.get('DBHOST', os.getenv('DBHOST')),
-                    'port': cls._env.get('DBPORT', os.getenv('DBPORT'))
+                    'dbname': os.getenv('DBNAME'),
+                    'user': os.getenv('DBUSER'),
+                    'password': os.getenv('DBPASS'),
+                    'host': os.getenv('DBHOST'),
+                    'port': os.getenv('DBPORT')
                 }
             )
         return cls._instance
@@ -100,21 +134,21 @@ class BaseSliceOfLifeApiResponse():
             except ContentNotFoundError as exc:
                 LOGGER.error("Requested content does not exist")
                 LOGGER.error("Error occurred during execution: %s", str(exc))
-                return ("Not found", 404)
+                return make_response("Not found", 404)
             except AuthorizationError as exc:
                 LOGGER.error("Insufficient permissions")
                 LOGGER.error("Error occurred during execution: %s", str(exc))
-                return ("Not authorized", 401)
+                return make_response("Not authorized", 401)
             except ServiceNotReachable as exc:
                 LOGGER.error("The requested resource timed out")
                 LOGGER.error("Error occurred during execution: %s", str(exc))
-                return ("Bad gateway", 504)
-            except (KeyError, IndexError, TypeError, ValueError) as exc:
+                return make_response("Bad gateway", 504)
+            except (KeyError, IndexError) as exc:
                 LOGGER.error("The request could not be understood")
                 LOGGER.error("Error occurred during execution: %s", str(exc))
-                return ("Bad request", 400)
+                return make_response("Bad request", 400)
             except SliceOfLifeAPIException as exc:
                 LOGGER.error("Error occurred during execution: %s", str(exc))
-                return ("Internal Server Error", 500)
+                return make_response("Internal server error", 500)
 
         return wrapper

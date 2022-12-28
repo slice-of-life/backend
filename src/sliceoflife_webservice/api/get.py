@@ -30,7 +30,7 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
     """
         A subclass of SliceOfLifeApiResponse for specifically responding to GET request
     """
-    base_url = os.getenv('BASE_URL')
+    base_url = os.getenv('BASE_URL', 'http://127.0.0.1:8000')
 
     @BaseSliceOfLifeApiResponse.safe_api_callback
     def hello(self) -> dict:
@@ -128,7 +128,7 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
             :rtype: User
         """
         with self.instance.start_transaction() as self._conn:
-            if self.has_authorized(handle):
+            if self.verify_auth_token(handle):
                 return self._get_basic_post_author_info(handle)
             raise AuthorizationError("Log in to view profile")
 
@@ -141,7 +141,7 @@ class SliceOfLifeApiGetResponse(BaseSliceOfLifeApiResponse):
             :rtype: dict
         """
         with self.instance.start_transaction() as self._conn:
-            if self.has_authorized(handle):
+            if self.verify_auth_token(handle):
                 return {
                     "completed": self._get_users_completed_tasks(handle),
                     "available": self._get_users_available_tasks(handle)
