@@ -34,6 +34,22 @@ def mock_db():
             (1, 'task1', 'task1 description', True),
             (2, 'task2', 'task2 description', True),
             (3, 'task3', 'task3 description', True)
+        ],
+        'comments': [
+            (1, datetime(2022, 11, 20), 'comment1text', None, 'user1', 4),
+            (2, datetime(2022, 11, 21), 'comment2text', 1, 'user2', 4),
+            (3, datetime(2022, 11, 30), 'comment3text', None, 'user1', 3),
+            (4, datetime(2022, 12, 10), 'comment4text', None, 'user2', 2),
+            (5, datetime(2022, 12, 12), 'comment5text', 4, 'user1', 2),
+            (6, datetime(2022, 12, 18), 'comment6text', None, 'user2', 1)
+        ],
+        'reactions': [
+            (1, 'code1', 'user2', 1),
+            (2, 'code2', 'user2', 2),
+            (3, 'code2', 'user1', 3),
+            (4, 'code2', 'user2', 3),
+            (5, 'code1', 'user1', 4),
+            (6, 'code2', 'user1', 4)
         ]
 
     }
@@ -49,6 +65,43 @@ def lookup_db(conn, query):
         for task in mock_db()['tasks']:
             if task[0] == query.parameters['taskid']:
                 return (task,)
+    if set(query.parameters.keys()) == {'postid'}:
+        for post in mock_db()['posts']:
+            if post[0] == query.parameters['postid']:
+                return (post,)
+    if set(query.parameters.keys()) == {'commentto'}:
+        return tuple([
+            comment
+            for comment in mock_db()['comments']
+            if comment[5] == query.parameters['commentto'] and comment[3] is None
+        ])
+    if set(query.parameters.keys()) == {'commentto', 'commentid'}:
+        return tuple([
+            comment
+            for comment in mock_db()['comments']
+            if comment[5] == query.parameters['commentto'] and comment[3] == query.parameters['commentid']
+        ])
+    if set(query.parameters.keys()) == {'reactto'}:
+        result = []
+        seen = set()
+        for reaction in mock_db()['reactions']:
+            if reaction[3] == query.parameters['reactto'] and reaction[1] not in seen:
+               result.append(reaction)
+               seen.add(reaction[1])
+        return tuple(result)
+    if set(query.parameters.keys()) == {'reactto', 'codecount'}:
+        count = len([
+            reaction
+            for reaction in mock_db()['reactions']
+            if reaction[3] == query.parameters['reactto'] and reaction[1] == query.parameters['codecount']
+        ])
+        return ((count,),)
+    if set(query.parameters.keys()) == {'reactto', 'codeused'}:
+        return tuple([
+            (reaction[2],)
+            for reaction in mock_db()['reactions']
+            if reaction[3] == query.parameters['reactto'] and reaction[1] == query.parameters['codeused']
+        ])
 
 def test_greeting_response():
     with app.test_request_context('/api/v1/greeting', method='GET'):
@@ -71,3 +124,45 @@ def test_latest_posts_response(limit, offset, result):
                 mock_query.side_effect = lookup_db
                 mock_share.side_effect = lambda x: x
                 assert SliceOfLifeApiGetResponse().get_latest_posts().get_data() == result
+
+@pytest.mark.parametrize('sliceid, result', [
+    (1, b'{"completes":{"active":true,"description":"task2 description","task_id":2,"title":"task2"},"created_at":"Thu, 15 Dec 2022 00:00:00 GMT","free_text":"post text 1","image":"post pic 1","post_id":1,"posted_by":{"email":"***","first_name":"user1first","handle":"user1","last_name":"user1last","password_hash":"***","profile_pic":"user1.png","salt":"***"}}\n'),
+    (2, b'{"completes":{"active":true,"description":"task3 description","task_id":3,"title":"task3"},"created_at":"Thu, 08 Dec 2022 00:00:00 GMT","free_text":"post text 2","image":"post pic 2","post_id":2,"posted_by":{"email":"***","first_name":"user1first","handle":"user1","last_name":"user1last","password_hash":"***","profile_pic":"user1.png","salt":"***"}}\n'),
+    (3, b'{"completes":{"active":true,"description":"task2 description","task_id":2,"title":"task2"},"created_at":"Tue, 29 Nov 2022 00:00:00 GMT","free_text":"post text 3","image":"post pic 3","post_id":3,"posted_by":{"email":"***","first_name":"user2first","handle":"user2","last_name":"user2last","password_hash":"***","profile_pic":"user2.png","salt":"***"}}\n'),
+    (4, b'{"completes":{"active":true,"description":"task1 description","task_id":1,"title":"task1"},"created_at":"Sat, 19 Nov 2022 00:00:00 GMT","free_text":"post text 4","image":"post pic 4","post_id":4,"posted_by":{"email":"***","first_name":"user2first","handle":"user2","last_name":"user2last","password_hash":"***","profile_pic":"user2.png","salt":"***"}}\n')
+])
+def test_slice_by_id_response(sliceid, result):
+    with app.test_request_context(f'/slices/{sliceid}', method='GET'):
+        with patch.object(Instance, 'query') as mock_query:
+            with patch.object(SpaceIndex, 'get_share_link') as mock_share:
+                mock_query.side_effect = lookup_db
+                mock_share.side_effect = lambda x: x
+                assert SliceOfLifeApiGetResponse().get_slice_by_id(sliceid).get_data() == result
+
+@pytest.mark.parametrize('postid, result', [
+    (1, b'{"threads":[{"comment":{"comment_by":{"email":"***","first_name":"user2first","handle":"user2","last_name":"user2last","password_hash":"***","profile_pic":"user2.png","salt":"***"},"comment_id":6,"comment_on":1,"created_id":"Sun, 18 Dec 2022 00:00:00 GMT","free_text":"comment6text","parent":null},"responses":[]}]}\n'),
+    (2, b'{"threads":[{"comment":{"comment_by":{"email":"***","first_name":"user2first","handle":"user2","last_name":"user2last","password_hash":"***","profile_pic":"user2.png","salt":"***"},"comment_id":4,"comment_on":2,"created_id":"Sat, 10 Dec 2022 00:00:00 GMT","free_text":"comment4text","parent":null},"responses":[{"comment":{"comment_by":{"email":"***","first_name":"user1first","handle":"user1","last_name":"user1last","password_hash":"***","profile_pic":"user1.png","salt":"***"},"comment_id":5,"comment_on":2,"created_id":"Mon, 12 Dec 2022 00:00:00 GMT","free_text":"comment5text","parent":4},"responses":[]}]}]}\n'),
+    (3, b'{"threads":[{"comment":{"comment_by":{"email":"***","first_name":"user1first","handle":"user1","last_name":"user1last","password_hash":"***","profile_pic":"user1.png","salt":"***"},"comment_id":3,"comment_on":3,"created_id":"Wed, 30 Nov 2022 00:00:00 GMT","free_text":"comment3text","parent":null},"responses":[]}]}\n'),
+    (4, b'{"threads":[{"comment":{"comment_by":{"email":"***","first_name":"user1first","handle":"user1","last_name":"user1last","password_hash":"***","profile_pic":"user1.png","salt":"***"},"comment_id":1,"comment_on":4,"created_id":"Sun, 20 Nov 2022 00:00:00 GMT","free_text":"comment1text","parent":null},"responses":[{"comment":{"comment_by":{"email":"***","first_name":"user2first","handle":"user2","last_name":"user2last","password_hash":"***","profile_pic":"user2.png","salt":"***"},"comment_id":2,"comment_on":4,"created_id":"Mon, 21 Nov 2022 00:00:00 GMT","free_text":"comment2text","parent":1},"responses":[]}]}]}\n')
+])
+def test_comment_tree_building(postid, result):
+    with app.test_request_context(f'/slices/{postid}/comments', method='GET'):
+        with patch.object(Instance, 'query') as mock_query:
+            with patch.object(SpaceIndex, 'get_share_link') as mock_share:
+                mock_query.side_effect = lookup_db
+                mock_share.side_effect = lambda x: x
+                assert SliceOfLifeApiGetResponse().get_comments_for_slice(postid).get_data() == result
+
+@pytest.mark.parametrize('postid, result', [
+    (1, b'[{"count":1,"reaction":"code1","reactors":["user2"]}]\n'),
+    (2, b'[{"count":1,"reaction":"code2","reactors":["user2"]}]\n'),
+    (3, b'[{"count":2,"reaction":"code2","reactors":["user1","user2"]}]\n'),
+    (4, b'[{"count":1,"reaction":"code1","reactors":["user1"]},{"count":1,"reaction":"code2","reactors":["user1"]}]\n')
+])
+def test_gather_reaction_stats(postid, result):
+    with app.test_request_context(f'/slices/{postid}/reactions', method='GET'):
+        with patch.object(Instance, 'query') as mock_query:
+            with patch.object(SpaceIndex, 'get_share_link') as mock_share:
+                mock_query.side_effect = lookup_db
+                mock_share.side_effect = lambda x: x
+                assert SliceOfLifeApiGetResponse().get_reactions_for_slice(postid).get_data() == result
