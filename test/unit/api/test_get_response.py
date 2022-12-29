@@ -5,6 +5,7 @@
 """
 
 import json
+import time
 from datetime import datetime
 from unittest.mock import patch
 
@@ -50,6 +51,12 @@ def mock_db():
             (4, 'code2', 'user2', 3),
             (5, 'code1', 'user1', 4),
             (6, 'code2', 'user1', 4)
+        ],
+        'completions': [
+            ('user1', 2),
+            ('user1', 3),
+            ('user2', 1),
+            ('user2', 2)
         ]
 
     }
@@ -61,14 +68,17 @@ def lookup_db(conn, query):
         for user in mock_db()['users']:
             if user[0] == query.parameters['handle']:
                 return (user,)
+        return tuple()
     if set(query.parameters.keys()) == {'taskid'}:
         for task in mock_db()['tasks']:
             if task[0] == query.parameters['taskid']:
                 return (task,)
+        return tuple()
     if set(query.parameters.keys()) == {'postid'}:
         for post in mock_db()['posts']:
             if post[0] == query.parameters['postid']:
                 return (post,)
+        return tuple()
     if set(query.parameters.keys()) == {'commentto'}:
         return tuple([
             comment
@@ -102,6 +112,24 @@ def lookup_db(conn, query):
             for reaction in mock_db()['reactions']
             if reaction[3] == query.parameters['reactto'] and reaction[1] == query.parameters['codeused']
         ])
+    if set(query.parameters.keys()) == {'completes'}:
+        return tuple([
+            task
+            for task in mock_db()['tasks']
+            if task[0] in [completion[1]
+                           for completion in mock_db()['completions']
+                           if completion[0] == query.parameters['completes']
+                           ]
+        ])
+    if set(query.parameters.keys()) == {'incompletes'}:
+        return tuple([
+            task
+            for task in mock_db()['tasks']
+            if task[0] not in [completion[1]
+                               for completion in mock_db()['completions']
+                               if completion[0] == query.parameters['incompletes']
+                               ]
+        ])
 
 def test_greeting_response():
     with app.test_request_context('/api/v1/greeting', method='GET'):
@@ -124,6 +152,7 @@ def test_latest_posts_response(limit, offset, result):
                 mock_query.side_effect = lookup_db
                 mock_share.side_effect = lambda x: x
                 assert SliceOfLifeApiGetResponse().get_latest_posts().get_data() == result
+                assert SliceOfLifeApiGetResponse().get_latest_posts().status == '200 OK'
 
 @pytest.mark.parametrize('sliceid, result', [
     (1, b'{"completes":{"active":true,"description":"task2 description","task_id":2,"title":"task2"},"created_at":"Thu, 15 Dec 2022 00:00:00 GMT","free_text":"post text 1","image":"post pic 1","post_id":1,"posted_by":{"email":"***","first_name":"user1first","handle":"user1","last_name":"user1last","password_hash":"***","profile_pic":"user1.png","salt":"***"}}\n'),
@@ -138,6 +167,7 @@ def test_slice_by_id_response(sliceid, result):
                 mock_query.side_effect = lookup_db
                 mock_share.side_effect = lambda x: x
                 assert SliceOfLifeApiGetResponse().get_slice_by_id(sliceid).get_data() == result
+                assert SliceOfLifeApiGetResponse().get_slice_by_id(sliceid).status == '200 OK'
 
 @pytest.mark.parametrize('postid, result', [
     (1, b'{"threads":[{"comment":{"comment_by":{"email":"***","first_name":"user2first","handle":"user2","last_name":"user2last","password_hash":"***","profile_pic":"user2.png","salt":"***"},"comment_id":6,"comment_on":1,"created_id":"Sun, 18 Dec 2022 00:00:00 GMT","free_text":"comment6text","parent":null},"responses":[]}]}\n'),
@@ -152,6 +182,7 @@ def test_comment_tree_building(postid, result):
                 mock_query.side_effect = lookup_db
                 mock_share.side_effect = lambda x: x
                 assert SliceOfLifeApiGetResponse().get_comments_for_slice(postid).get_data() == result
+                assert SliceOfLifeApiGetResponse().get_comments_for_slice(postid).status == '200 OK'
 
 @pytest.mark.parametrize('postid, result', [
     (1, b'[{"count":1,"reaction":"code1","reactors":["user2"]}]\n'),
@@ -166,3 +197,90 @@ def test_gather_reaction_stats(postid, result):
                 mock_query.side_effect = lookup_db
                 mock_share.side_effect = lambda x: x
                 assert SliceOfLifeApiGetResponse().get_reactions_for_slice(postid).get_data() == result
+                assert SliceOfLifeApiGetResponse().get_reactions_for_slice(postid).status == '200 OK'
+
+def test_nonexistant_slice_response():
+    with app.test_request_context('/slices/5', method='GET'):
+        with patch.object(Instance, 'query') as mock_query:
+            with patch.object(SpaceIndex, 'get_share_link') as mock_share:
+                mock_query.side_effect = lookup_db
+                mock_share.side_effect = lambda x: x
+                assert SliceOfLifeApiGetResponse().get_slice_by_id(5).get_data() == b'Not found'
+                assert SliceOfLifeApiGetResponse().get_slice_by_id(5).status == '404 NOT FOUND'
+
+@pytest.mark.parametrize('user, access_token, result', [
+    ('user1', SliceOfLifeApiGetResponse().create_auth_token('user1'), b'{"email":"***","first_name":"user1first","handle":"user1","last_name":"user1last","password_hash":"***","profile_pic":"user1.png","salt":"***"}\n'),
+    ('user2', SliceOfLifeApiGetResponse().create_auth_token('user2'), b'{"email":"***","first_name":"user2first","handle":"user2","last_name":"user2last","password_hash":"***","profile_pic":"user2.png","salt":"***"}\n')
+])
+def test_profile_access_with_token(user, access_token, result):
+    with app.test_request_context(f'/users/{user}/profile', method='GET', headers={'x-auth-token': access_token}):
+        time.sleep(2) # allow token to be activated
+        with patch.object(Instance, 'query') as mock_query:
+            with patch.object(SpaceIndex, 'get_share_link') as mock_share:
+                mock_query.side_effect = lookup_db
+                mock_share.side_effect = lambda x: x
+                assert SliceOfLifeApiGetResponse().get_user_profile(user).get_data() == result
+                assert SliceOfLifeApiGetResponse().get_user_profile(user).status == '200 OK'
+
+@pytest.mark.parametrize('user', ['user1', 'user2'])
+def test_profile_access_without_token(user):
+    with app.test_request_context(f'/users/{user}/profile', method='GET'):
+        with patch.object(Instance, 'query') as mock_query:
+            with patch.object(SpaceIndex, 'get_share_link') as mock_share:
+                mock_query.side_effect = lookup_db
+                mock_share.side_effect = lambda x: x
+                assert SliceOfLifeApiGetResponse().get_user_profile(user).get_data() == b'Not authorized'
+                assert SliceOfLifeApiGetResponse().get_user_profile(user).status == '401 UNAUTHORIZED'
+
+@pytest.mark.parametrize('user, access_token, result', [
+    ('user1', SliceOfLifeApiGetResponse().create_auth_token('user1'), b'{"available":[{"active":true,"description":"task1 description","task_id":1,"title":"task1"}],"completed":[{"active":true,"description":"task2 description","task_id":2,"title":"task2"},{"active":true,"description":"task3 description","task_id":3,"title":"task3"}]}\n'),
+    ('user2', SliceOfLifeApiGetResponse().create_auth_token('user2'), b'{"available":[{"active":true,"description":"task3 description","task_id":3,"title":"task3"}],"completed":[{"active":true,"description":"task1 description","task_id":1,"title":"task1"},{"active":true,"description":"task2 description","task_id":2,"title":"task2"}]}\n')
+])
+def test_tasklist_access_with_token(user, access_token, result):
+    with app.test_request_context(f'/users/{user}/tasklist', method='GET', headers={'x-auth-token': access_token}):
+        time.sleep(2) # alloww token to be activated
+        with patch.object(Instance, 'query') as mock_query:
+            with patch.object(SpaceIndex, 'get_share_link') as mock_share:
+                mock_query.side_effect = lookup_db
+                mock_share.side_effect = lambda x: x
+                assert SliceOfLifeApiGetResponse().get_user_tasklist(user).get_data() == result
+                assert SliceOfLifeApiGetResponse().get_user_tasklist(user).status == '200 OK'
+
+@pytest.mark.parametrize('user', ['user1', 'user2'])
+def test_tasklist_access_without_token(user):
+    with app.test_request_context(f'/users/{user}/tasklist', method='GET'):
+        with patch.object(Instance, 'query') as mock_query:
+            with patch.object(SpaceIndex, 'get_share_link') as mock_share:
+                mock_query.side_effect = lookup_db
+                mock_share.side_effect = lambda x: x
+                assert SliceOfLifeApiGetResponse().get_user_tasklist(user).get_data() == b'Not authorized'
+                assert SliceOfLifeApiGetResponse().get_user_tasklist(user).status == '401 UNAUTHORIZED'
+
+@pytest.mark.parametrize('user, invalid_token', [
+    ('user1', SliceOfLifeApiGetResponse().create_auth_token('user2')),
+    ('user2', SliceOfLifeApiGetResponse().create_auth_token('user1'))
+])
+def test_profile_access_with_invalid_token(user, invalid_token):
+    with app.test_request_context(f'/users/{user}/profile', method='GET', headers={'x-auth-token': invalid_token}):
+        time.sleep(2) # allow token to be activated
+        with patch.object(Instance, 'query') as mock_query:
+            with patch.object(SpaceIndex, 'get_share_link') as mock_share:
+                mock_query.side_effect = lookup_db
+                mock_share.side_effect = lambda x: x
+                assert SliceOfLifeApiGetResponse().get_user_profile(user).get_data() == b'Not authorized'
+                assert SliceOfLifeApiGetResponse().get_user_profile(user).status == '401 UNAUTHORIZED'
+
+@pytest.mark.parametrize('user, invalid_token', [
+    ('user1', SliceOfLifeApiGetResponse().create_auth_token('user2')),
+    ('user2', SliceOfLifeApiGetResponse().create_auth_token('user1'))
+])
+def test_tasklist_access_with_invalid_token(user, invalid_token):
+    with app.test_request_context(f'/users/{user}/tasklist', method='GET', headers={'x-auth-token': invalid_token}):
+        time.sleep(2)  # allow token to be activated
+        with patch.object(Instance, 'query') as mock_query:
+            with patch.object(SpaceIndex, 'get_share_link') as mock_share:
+                mock_query.side_effect = lookup_db
+                mock_share.side_effect = lambda x: x
+                assert SliceOfLifeApiGetResponse().get_user_tasklist(user).get_data() == b'Not authorized'
+                assert SliceOfLifeApiGetResponse().get_user_tasklist(user).status == '401 UNAUTHORIZED'
+
