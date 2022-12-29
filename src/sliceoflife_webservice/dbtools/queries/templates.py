@@ -296,10 +296,10 @@ def available_tasks(user_handle: str) -> PreparedStatement:
                         WHERE c.completed_by = {handle}
                     )
     """).format(
-        handle=sql.Placeholder('handle')
+        handle=sql.Placeholder('incompletes')
     )
     parameters = {
-        'handle': user_handle
+        'incompletes': user_handle
     }
     return PreparedStatement(statement, **parameters)
 
@@ -319,9 +319,9 @@ def completed_tasks(user_handle: str) -> PreparedStatement:
                         WHERE c.completed_by = {handle}
                     )
     """).format(
-        handle=sql.Placeholder('handle')
+        handle=sql.Placeholder('completes')
     )
     parameters = {
-        'handle': user_handle
+        'completes': user_handle
     }
     return PreparedStatement(statement, **parameters)
