@@ -118,10 +118,10 @@ def test_available_tasks_template():
     """Test the available_tasks template"""
     template = templates.available_tasks('handle')
     assert template.statement
-    assert template.parameters == {'handle': 'handle'}
+    assert template.parameters == {'incompletes': 'handle'}
 
 def test_completed_tasks_template():
     """Test the completed_tasks template"""
     template = templates.completed_tasks('handle')
     assert template.statement
-    assert template.parameters == {'handle': 'handle'}
+    assert template.parameters == {'completes': 'handle'}
