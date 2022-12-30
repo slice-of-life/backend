@@ -4,132 +4,18 @@
     module_author: Nathan Mendoza (nathancm@uci.edu)
 """
 
-import json
 import time
-from datetime import datetime
 from unittest.mock import patch
 
 import pytest
-from flask import request
 
 from sliceoflife_webservice.dbtools import Instance
 from sliceoflife_webservice.toolkit import SpaceIndex
-from sliceoflife_webservice.dbtools.queries import paginated_posts, specific_user, specific_task
-from sliceoflife_webservice.dbtools.queries.statement import PreparedStatement
 from sliceoflife_webservice.api.get import SliceOfLifeApiGetResponse
 from sliceoflife_webservice import app
 
-def mock_db():
-    return {
-        'posts': [
-            (1, 'post text 1', 'post pic 1', datetime(2022, 12, 15), 'user1', 2),
-            (2, 'post text 2', 'post pic 2', datetime(2022, 12, 8), 'user1', 3),
-            (3, 'post text 3', 'post pic 3', datetime(2022, 11, 29), 'user2', 2),
-            (4, 'post text 4', 'post pic 4', datetime(2022, 11, 19), 'user2', 1)
-        ],
-        'users': [
-            ('user1', 'hash1', 'user1@mail.com', 'salt1', 'user1first', 'user1last', 'user1.png'),
-            ('user2', 'hash2', 'user2@mail.com', 'salt2', 'user2first', 'user2last', 'user2.png')
-        ],
-        'tasks':[
-            (1, 'task1', 'task1 description', True),
-            (2, 'task2', 'task2 description', True),
-            (3, 'task3', 'task3 description', True)
-        ],
-        'comments': [
-            (1, datetime(2022, 11, 20), 'comment1text', None, 'user1', 4),
-            (2, datetime(2022, 11, 21), 'comment2text', 1, 'user2', 4),
-            (3, datetime(2022, 11, 30), 'comment3text', None, 'user1', 3),
-            (4, datetime(2022, 12, 10), 'comment4text', None, 'user2', 2),
-            (5, datetime(2022, 12, 12), 'comment5text', 4, 'user1', 2),
-            (6, datetime(2022, 12, 18), 'comment6text', None, 'user2', 1)
-        ],
-        'reactions': [
-            (1, 'code1', 'user2', 1),
-            (2, 'code2', 'user2', 2),
-            (3, 'code2', 'user1', 3),
-            (4, 'code2', 'user2', 3),
-            (5, 'code1', 'user1', 4),
-            (6, 'code2', 'user1', 4)
-        ],
-        'completions': [
-            ('user1', 2),
-            ('user1', 3),
-            ('user2', 1),
-            ('user2', 2)
-        ]
+from . import lookup_db
 
-    }
-
-def lookup_db(conn, query):
-    if set(query.parameters.keys()) == {'limit', 'offset'}:
-        return mock_db()['posts'][query.parameters['offset']:query.parameters['offset'] + query.parameters['limit']]
-    if set(query.parameters.keys()) == {'handle'}:
-        for user in mock_db()['users']:
-            if user[0] == query.parameters['handle']:
-                return (user,)
-        return tuple()
-    if set(query.parameters.keys()) == {'taskid'}:
-        for task in mock_db()['tasks']:
-            if task[0] == query.parameters['taskid']:
-                return (task,)
-        return tuple()
-    if set(query.parameters.keys()) == {'postid'}:
-        for post in mock_db()['posts']:
-            if post[0] == query.parameters['postid']:
-                return (post,)
-        return tuple()
-    if set(query.parameters.keys()) == {'commentto'}:
-        return tuple([
-            comment
-            for comment in mock_db()['comments']
-            if comment[5] == query.parameters['commentto'] and comment[3] is None
-        ])
-    if set(query.parameters.keys()) == {'commentto', 'commentid'}:
-        return tuple([
-            comment
-            for comment in mock_db()['comments']
-            if comment[5] == query.parameters['commentto'] and comment[3] == query.parameters['commentid']
-        ])
-    if set(query.parameters.keys()) == {'reactto'}:
-        result = []
-        seen = set()
-        for reaction in mock_db()['reactions']:
-            if reaction[3] == query.parameters['reactto'] and reaction[1] not in seen:
-               result.append(reaction)
-               seen.add(reaction[1])
-        return tuple(result)
-    if set(query.parameters.keys()) == {'reactto', 'codecount'}:
-        count = len([
-            reaction
-            for reaction in mock_db()['reactions']
-            if reaction[3] == query.parameters['reactto'] and reaction[1] == query.parameters['codecount']
-        ])
-        return ((count,),)
-    if set(query.parameters.keys()) == {'reactto', 'codeused'}:
-        return tuple([
-            (reaction[2],)
-            for reaction in mock_db()['reactions']
-            if reaction[3] == query.parameters['reactto'] and reaction[1] == query.parameters['codeused']
-        ])
-    if set(query.parameters.keys()) == {'completes'}:
-        return tuple([
-            task
-            for task in mock_db()['tasks']
-            if task[0] in [completion[1]
-                           for completion in mock_db()['completions']
-                           if completion[0] == query.parameters['completes']
-                           ]
-        ])
-    if set(query.parameters.keys()) == {'incompletes'}:
-        return tuple([
-            task
-            for task in mock_db()['tasks']
-            if task[0] not in [completion[1]
-                               for completion in mock_db()['completions']
-                               if completion[0] == query.parameters['incompletes']
-                               ]
-        ])
 
 def test_greeting_response():
     with app.test_request_context('/api/v1/greeting', method='GET'):
