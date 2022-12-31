@@ -69,6 +69,7 @@ class SliceOfLifeApiPostResponse(BaseSliceOfLifeApiResponse):
                     return {'token': self.create_auth_token(form_data['handle'])}
                 raise AuthorizationError("Incorrect handle or password")
 
+    @BaseSliceOfLifeApiResponse.safe_api_callback
     def create_new_post(self) -> str:
         """
             Create a new post. On success, return the message "CREATED"

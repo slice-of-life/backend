@@ -8,9 +8,11 @@ import logging
 import os
 from dataclasses import asdict
 from secrets import compare_digest
+from datetime import timedelta
 
 from dotenv import load_dotenv
 from flask import Flask, request
+from flask_cors import cross_origin
 
 from .api.get import SliceOfLifeApiGetResponse
 from .api.post import SliceOfLifeApiPostResponse
@@ -26,6 +28,7 @@ LOGGER.info("Created an API application instance")
 
 LOGGER.info("Added the route: GET /api/v1/greeting")
 @app.route('/api/v1/greeting', methods=['GET'])
+@cross_origin(allow_headers=['x-auth-token'], max_age=timedelta(seconds=60))
 def greeting():
     """
        The first API method of the Slice Of Life API
@@ -35,6 +38,7 @@ def greeting():
 
 LOGGER.info("Added the route: GET /api/v1/slices/latest")
 @app.route('/api/v1/slices/latest', methods=['GET'])
+@cross_origin(allow_headers=['x-auth-token'], max_age=timedelta(seconds=60))
 def latest_slices():
     """
         GET the most recent slices of life (posts)
@@ -44,6 +48,7 @@ def latest_slices():
 
 LOGGER.info("Added the route: GET /api/v1/slices/<:id>")
 @app.route('/api/v1/slices/<int:slice_id>', methods=['GET'])
+@cross_origin(allow_headers=['x-auth-token'], max_age=timedelta(seconds=60))
 def slice_by_id(slice_id: int):
     """
         GET the slice by its ID (post)
@@ -53,6 +58,7 @@ def slice_by_id(slice_id: int):
 
 LOGGER.info("Added the route: GET /api/v1/slices/<:id>/comments")
 @app.route('/api/v1/slices/<int:slice_id>/comments', methods=['GET'])
+@cross_origin(allow_headers=['x-auth-token'], max_age=timedelta(seconds=60))
 def comments_for_slice(slice_id: int):
     """
         GET the comments for a given post
@@ -62,6 +68,7 @@ def comments_for_slice(slice_id: int):
 
 LOGGER.info("Added the route: GET /api/v1/slices/<:id>/reactions")
 @app.route('/api/v1/slices/<int:slice_id>/reactions', methods=['GET'])
+@cross_origin(allow_headers=['x-auth-token'], max_age=timedelta(seconds=60))
 def reactions_for_slice(slice_id: int):
     """
         GET the reactions for a given post
@@ -70,19 +77,18 @@ def reactions_for_slice(slice_id: int):
     return SliceOfLifeApiGetResponse().get_reactions_for_slice(slice_id)
 
 LOGGER.info("Added the route: GET /api/v1/users/<:handle>/profile")
-@app.route('/api/v1/users/<string:handle>/profile', methods=['GET', 'OPTIONS'])
+@app.route('/api/v1/users/<string:handle>/profile', methods=['GET'])
+@cross_origin(allow_headers=['x-auth-token'], max_age=timedelta(seconds=60))
 def user_profile_information(handle: str):
     """
         GET the basic profile information for a given user handle
     """
-    if request.method == 'OPTIONS':
-        LOGGER.info("Responding to OPTIONS /api/v1/users/<handle>/profile")
-        return SliceOfLifeApiOptionsResponse().preflight_request()
     LOGGER.info("Responding to GET /api/v1/users/<handle>/profile")
     return SliceOfLifeApiGetResponse().get_user_profile(handle)
 
 LOGGER.info("Added the route: GET /api/v1/users/<:handle>/tasklist")
 @app.route('/api/v1/users/<string:handle>/tasklist', methods=['GET'])
+@cross_origin(allow_headers=['x-auth-token'], max_age=timedelta(seconds=60))
 def user_task_list(handle: str):
     """
         GET the task list for the given user
@@ -92,6 +98,7 @@ def user_task_list(handle: str):
 
 LOGGER.info("Added the route: POST /api/v1/users/account/new")
 @app.route('/api/v1/users/account/new', methods=['POST'])
+@cross_origin(allow_headers=['x-auth-token'], max_age=timedelta(seconds=60))
 def create_new_user():
     """
         Create a new slice of life user account. Only basic information required to get started
@@ -101,6 +108,7 @@ def create_new_user():
 
 LOGGER.info("Added the route: POST /api/v1/users/authenticate")
 @app.route('/api/v1/users/authenticate', methods=['POST'])
+@cross_origin(allow_headers=['x-auth-token'], max_age=timedelta(seconds=60))
 def authenticate_user():
     """
         Authenticate the user. Gives the client an auth token if successful that can be used later
@@ -110,6 +118,7 @@ def authenticate_user():
 
 LOGGER.info("Added the route: POST /api/v1/slices/new")
 @app.route('/api/v1/slices/new', methods=['POST'])
+@cross_origin(allow_headers=['x-auth-token'], max_age=timedelta(seconds=60))
 def new_post():
     """
         Create a new post, if the user is authenicated

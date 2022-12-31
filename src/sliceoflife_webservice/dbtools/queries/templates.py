@@ -108,10 +108,10 @@ def top_level_comments(post_id: int) -> PreparedStatement:
                     AND c.parent is NULL
                     ORDER BY c.created_at ASC
     """).format(
-        post=sql.Placeholder('postid')
+        post=sql.Placeholder('commentto')
     )
     parameters = {
-        'postid': post_id
+        'commentto': post_id
     }
     return PreparedStatement(statement, **parameters)
 
@@ -130,11 +130,11 @@ def comments_responding_to(post_id: int, parent_comment_id: int) -> PreparedStat
                     AND c.parent = {commentid}
                     ORDER BY c.created_at ASC
     """).format(
-        postid=sql.Placeholder('postid'),
+        postid=sql.Placeholder('commentto'),
         commentid=sql.Placeholder('commentid')
     )
     parameters = {
-        'postid': post_id,
+        'commentto': post_id,
         'commentid': parent_comment_id
     }
     return PreparedStatement(statement, **parameters)
@@ -151,10 +151,10 @@ def reactions_by_group(post_id: int) -> PreparedStatement:
                     FROM Reactions r
                     WHERE r.reacted_to = {postid}
     """).format(
-        postid=sql.Placeholder('postid')
+        postid=sql.Placeholder('reactto')
     )
     parameters = {
-        'postid': post_id
+        'reactto': post_id
     }
     return PreparedStatement(statement, **parameters)
 
@@ -172,12 +172,12 @@ def reaction_counts(emoji_code: str, post_id: int) -> PreparedStatement:
                     WHERE r.reacted_to = {postid}
                     AND r.emoji = {code}
     """).format(
-        postid=sql.Placeholder('postid'),
-        code=sql.Placeholder('code')
+        postid=sql.Placeholder('reactto'),
+        code=sql.Placeholder('codecount')
     )
     parameters = {
-        'postid': post_id,
-        'code': emoji_code
+        'reactto': post_id,
+        'codecount': emoji_code
     }
     return PreparedStatement(statement, **parameters)
 
@@ -195,12 +195,12 @@ def reactors_by_emoji(emoji_code: str, post_id: int) -> PreparedStatement:
                     WHERE r.reacted_to = {postid}
                     AND r.emoji = {code}
     """).format(
-        postid=sql.Placeholder('postid'),
-        code=sql.Placeholder('code')
+        postid=sql.Placeholder('reactto'),
+        code=sql.Placeholder('codeused')
     )
     parameters = {
-        'postid': post_id,
-        'code': emoji_code
+        'reactto': post_id,
+        'codeused': emoji_code
     }
     return PreparedStatement(statement, **parameters)
 
@@ -296,10 +296,10 @@ def available_tasks(user_handle: str) -> PreparedStatement:
                         WHERE c.completed_by = {handle}
                     )
     """).format(
-        handle=sql.Placeholder('handle')
+        handle=sql.Placeholder('incompletes')
     )
     parameters = {
-        'handle': user_handle
+        'incompletes': user_handle
     }
     return PreparedStatement(statement, **parameters)
 
@@ -319,9 +319,9 @@ def completed_tasks(user_handle: str) -> PreparedStatement:
                         WHERE c.completed_by = {handle}
                     )
     """).format(
-        handle=sql.Placeholder('handle')
+        handle=sql.Placeholder('completes')
     )
     parameters = {
-        'handle': user_handle
+        'completes': user_handle
     }
     return PreparedStatement(statement, **parameters)
