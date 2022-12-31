@@ -129,7 +129,6 @@ class BaseSliceOfLifeApiResponse():
             try:
                 LOGGER.info("Request from %s", str(request.headers.get('Origin')))
                 response = make_response(jsonify(method(ref, *args)), 200)
-                response.headers.set('Access-Control-Allow-Origin', '*')
                 return response
             except ContentNotFoundError as exc:
                 LOGGER.error("Requested content does not exist")
