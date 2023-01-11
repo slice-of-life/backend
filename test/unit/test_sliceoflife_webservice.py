@@ -10,7 +10,6 @@ from sliceoflife_webservice import app
 from sliceoflife_webservice.api import BaseSliceOfLifeApiResponse
 from sliceoflife_webservice.api.get import SliceOfLifeApiGetResponse
 from sliceoflife_webservice.api.post import SliceOfLifeApiPostResponse
-from sliceoflife_webservice.api.options import SliceOfLifeApiOptionsResponse
 
 import pytest
 from flask import request

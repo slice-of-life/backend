@@ -16,7 +16,6 @@ from flask_cors import cross_origin
 
 from .api.get import SliceOfLifeApiGetResponse
 from .api.post import SliceOfLifeApiPostResponse
-from .api.options import SliceOfLifeApiOptionsResponse
 
 LOGGER = logging.getLogger('gunicorn.error')
 
