@@ -1,0 +1,24 @@
+<html>
+    <head>
+
+    </head>
+
+    <body>
+        <script>
+            
+            window.addEventListener("load", (event) => {
+                console.log("page is fully loaded");
+                const request = new XMLHttpRequest();
+                request.addEventListener("load", (event) => {
+                    if (request.readyState == 4 && request.status == 200){
+                        console.log(request.responseText);
+                    }
+                });
+                request.open("GET", "https://sliceoflife-webservice-d7uk9.ondigitalocean.app/api/v1/users/nathancm/profile");
+                request.setRequestHeader('x-auth-token', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJoYW5kbGUiOiJuYXRoYW5jbSIsImV4cCI6MTY3MzA3MzU3OCwibmJmIjoxNjcyNDY4NzgwfQ.xtBVAy-6JKlv-pwDNlLU0CpUk1CRiC4_TXI8AY2gN58');
+                request.send();
+            });
+
+        </script>
+    </body>
+</html>
